@@ -95,11 +95,11 @@ describe("FTS5 search", () => {
 
   beforeEach(() => {
     db = makeTestDb();
-    const docId1 = insertDoc(db, "docs/plan-nats.md", "NATS Integration", "design");
+    const docId1 = insertDoc(db, "docs/adr-2026-04-17-nats-security.md", "NATS Integration", "adr");
     insertSection(db, docId1, "Overview", "NATS JetStream is used for event streaming and pub/sub messaging.", 3, 15);
     insertSection(db, docId1, "Security", "All NATS subjects require JWT authentication.", 16, 30);
 
-    const docId2 = insertDoc(db, "docs/spec-schema.md", "State Schema", "spec");
+    const docId2 = insertDoc(db, "docs/spec-state-schema.md", "State Schema", "spec");
     insertSection(db, docId2, "KV Buckets", "KV buckets store session state and project configuration.", 3, 20);
     insertSection(db, docId2, "Data Types", "All values are JSON encoded.", 21, 35);
   });
@@ -114,19 +114,19 @@ describe("FTS5 search", () => {
   test("returns doc metadata with each result", () => {
     const results = searchDocs(db, { query: "JWT", limit: 10 });
     expect(results.length).toBe(1);
-    expect(results[0].doc_path).toBe("docs/plan-nats.md");
+    expect(results[0].doc_path).toBe("docs/adr-2026-04-17-nats-security.md");
     expect(results[0].doc_title).toBe("NATS Integration");
-    expect(results[0].category).toBe("design");
+    expect(results[0].category).toBe("adr");
     expect(results[0].heading).toBe("Security");
   });
 
   test("category filter limits results", () => {
-    const designResults = searchDocs(db, { query: "state", category: "design", limit: 10 });
+    const adrResults = searchDocs(db, { query: "state", category: "adr", limit: 10 });
     const specResults = searchDocs(db, { query: "state", category: "spec", limit: 10 });
 
-    // "state" appears in spec doc title/content but should not appear in design category
-    for (const r of designResults) {
-      expect(r.category).toBe("design");
+    // "state" appears in spec doc title/content but should not appear in adr category
+    for (const r of adrResults) {
+      expect(r.category).toBe("adr");
     }
     for (const r of specResults) {
       expect(r.category).toBe("spec");
@@ -135,7 +135,7 @@ describe("FTS5 search", () => {
 
   test("limit is respected", () => {
     // Add more sections so we exceed limit
-    const docId = insertDoc(db, "docs/plan-extra.md", "Extra", "design");
+    const docId = insertDoc(db, "docs/adr-2026-04-10-extra.md", "Extra", "adr");
     for (let i = 0; i < 15; i++) {
       insertSection(db, docId, `Section ${i}`, `Content about session management topic ${i}.`);
     }

@@ -86,14 +86,14 @@ describe("indexFile", () => {
   });
 
   test("indexes a new file and returns true", () => {
-    const filePath = join(docsDir, "plan-test.md");
+    const filePath = join(docsDir, "adr-2026-04-10-test.md");
     writeFileSync(filePath, "# Test Doc\n\n## Section One\n\nContent here.\n");
     const result = indexFile(db, filePath, tmpDir);
     expect(result).toBe(true);
   });
 
   test("document and sections are inserted into DB", () => {
-    const filePath = join(docsDir, "plan-test.md");
+    const filePath = join(docsDir, "adr-2026-04-10-test.md");
     writeFileSync(filePath, "# Test Doc\n\n## Section One\n\nContent here.\n\n## Section Two\n\nMore content.\n");
     indexFile(db, filePath, tmpDir);
 
@@ -102,7 +102,7 @@ describe("indexFile", () => {
     ).get();
     expect(doc).toBeDefined();
     expect(doc!.title).toBe("Test Doc");
-    expect(doc!.category).toBe("design"); // plan- prefix
+    expect(doc!.category).toBe("adr"); // adr- prefix
 
     const sections = db.query<{ heading: string }, []>(
       "SELECT heading FROM sections ORDER BY line_start"
@@ -113,7 +113,7 @@ describe("indexFile", () => {
   });
 
   test("returns false if mtime unchanged (skips reindex)", async () => {
-    const filePath = join(docsDir, "plan-test.md");
+    const filePath = join(docsDir, "adr-2026-04-10-test.md");
     writeFileSync(filePath, "# Test\n\n## Section A\n\nContent.\n");
 
     // First index
@@ -125,7 +125,7 @@ describe("indexFile", () => {
   });
 
   test("reindexes file when content changes (mtime changes)", async () => {
-    const filePath = join(docsDir, "plan-test.md");
+    const filePath = join(docsDir, "adr-2026-04-10-test.md");
     writeFileSync(filePath, "# Test\n\n## Old Section\n\nOriginal content.\n");
     indexFile(db, filePath, tmpDir);
 
@@ -145,7 +145,7 @@ describe("indexFile", () => {
   });
 
   test("transaction correctness: old sections deleted before new inserted", () => {
-    const filePath = join(docsDir, "plan-test.md");
+    const filePath = join(docsDir, "adr-2026-04-10-test.md");
     writeFileSync(filePath, "# Test\n\n## Alpha\n\nA content.\n\n## Beta\n\nB content.\n");
     indexFile(db, filePath, tmpDir);
 
@@ -165,7 +165,7 @@ describe("indexFile", () => {
   });
 
   test("returns false and removes from DB when file is deleted", () => {
-    const filePath = join(docsDir, "plan-test.md");
+    const filePath = join(docsDir, "adr-2026-04-10-test.md");
     writeFileSync(filePath, "# Test\n\n## Section\n\nContent.\n");
     indexFile(db, filePath, tmpDir);
 
@@ -182,15 +182,26 @@ describe("indexFile", () => {
   });
 
   test("category classified from filename prefix", () => {
-    // spec- prefix → spec
-    const filePath = join(docsDir, "spec-schema.md");
-    writeFileSync(filePath, "# Schema\n\n## Overview\n\nContent.\n");
+    // adr- prefix → adr
+    const filePath = join(docsDir, "adr-2026-04-10-something.md");
+    writeFileSync(filePath, "# ADR\n\n## Overview\n\nContent.\n");
     indexFile(db, filePath, tmpDir);
 
     const doc = db.query<{ category: string }, []>("SELECT category FROM documents").get()!;
-    expect(doc.category).toBe("spec");
+    expect(doc.category).toBe("adr");
 
     unlinkSync(filePath);
+    db.run("DELETE FROM documents");
+
+    // spec- prefix → spec
+    const filePath3 = join(docsDir, "spec-schema.md");
+    writeFileSync(filePath3, "# Schema\n\n## Overview\n\nContent.\n");
+    indexFile(db, filePath3, tmpDir);
+
+    const doc3 = db.query<{ category: string }, []>("SELECT category FROM documents").get()!;
+    expect(doc3.category).toBe("spec");
+
+    unlinkSync(filePath3);
     db.run("DELETE FROM documents");
 
     // Other file → null category
@@ -225,16 +236,16 @@ describe("indexAllDocs", () => {
   });
 
   test("indexes all .md files in docs dir", () => {
-    writeFileSync(join(docsDir, "plan-a.md"), "# Doc A\n\n## Section A\n\nContent.\n");
-    writeFileSync(join(docsDir, "plan-b.md"), "# Doc B\n\n## Section B\n\nContent.\n");
+    writeFileSync(join(docsDir, "adr-2026-04-10-a.md"), "# Doc A\n\n## Section A\n\nContent.\n");
+    writeFileSync(join(docsDir, "adr-2026-04-10-b.md"), "# Doc B\n\n## Section B\n\nContent.\n");
 
     const count = indexAllDocs(db, docsDir, tmpDir);
     expect(count).toBe(2);
 
     const docs = db.query<{ path: string }, []>("SELECT path FROM documents ORDER BY path").all();
     expect(docs.length).toBe(2);
-    expect(docs[0].path).toBe("docs/plan-a.md");
-    expect(docs[1].path).toBe("docs/plan-b.md");
+    expect(docs[0].path).toBe("docs/adr-2026-04-10-a.md");
+    expect(docs[1].path).toBe("docs/adr-2026-04-10-b.md");
   });
 
   test("returns 0 when docs dir does not exist", () => {
@@ -244,8 +255,8 @@ describe("indexAllDocs", () => {
   });
 
   test("removes stale entries for deleted files", () => {
-    const fileA = join(docsDir, "plan-a.md");
-    const fileB = join(docsDir, "plan-b.md");
+    const fileA = join(docsDir, "adr-2026-04-10-a.md");
+    const fileB = join(docsDir, "adr-2026-04-10-b.md");
     writeFileSync(fileA, "# Doc A\n\n## Section A\n\nContent.\n");
     writeFileSync(fileB, "# Doc B\n\n## Section B\n\nContent.\n");
 
@@ -254,16 +265,16 @@ describe("indexAllDocs", () => {
     // Delete file B from disk
     unlinkSync(fileB);
 
-    // Re-run indexAllDocs → should remove plan-b.md from DB
+    // Re-run indexAllDocs → should remove adr-2026-04-10-b.md from DB
     indexAllDocs(db, docsDir, tmpDir);
 
     const docs = db.query<{ path: string }, []>("SELECT path FROM documents").all();
     expect(docs.length).toBe(1);
-    expect(docs[0].path).toBe("docs/plan-a.md");
+    expect(docs[0].path).toBe("docs/adr-2026-04-10-a.md");
   });
 
   test("skips non-.md files", () => {
-    writeFileSync(join(docsDir, "plan-a.md"), "# Doc A\n\n## Section\n\nContent.\n");
+    writeFileSync(join(docsDir, "adr-2026-04-10-a.md"), "# Doc A\n\n## Section\n\nContent.\n");
     writeFileSync(join(docsDir, "README.txt"), "Not a markdown file");
     writeFileSync(join(docsDir, "notes.json"), '{"foo": "bar"}');
 
@@ -272,15 +283,15 @@ describe("indexAllDocs", () => {
   });
 
   test("returns count incremented for reindexed + stale-removed files", () => {
-    const fileA = join(docsDir, "plan-a.md");
-    const fileB = join(docsDir, "plan-b.md");
+    const fileA = join(docsDir, "adr-2026-04-10-a.md");
+    const fileB = join(docsDir, "adr-2026-04-10-b.md");
     writeFileSync(fileA, "# Doc A\n\n## Section A\n\nContent.\n");
     writeFileSync(fileB, "# Doc B\n\n## Section B\n\nContent.\n");
     indexAllDocs(db, docsDir, tmpDir);
 
     // Delete B and force A to be reindexed
     unlinkSync(fileB);
-    db.run("UPDATE documents SET mtime = 0 WHERE path = 'docs/plan-a.md'");
+    db.run("UPDATE documents SET mtime = 0 WHERE path = 'docs/adr-2026-04-10-a.md'");
 
     const count = indexAllDocs(db, docsDir, tmpDir);
     // A is reindexed (1), B is stale-removed (1) → count = 2

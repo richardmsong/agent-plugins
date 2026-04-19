@@ -160,7 +160,7 @@ describe("startWatcher", () => {
   test("indexes files on watcher start (initial state)", async () => {
     // Write a doc BEFORE starting the watcher
     writeFileSync(
-      join(repo.docsDir, "plan-foo.md"),
+      join(repo.docsDir, "adr-2026-04-10-foo.md"),
       "# Foo\n\n## Section\n\nContent.\n"
     );
 
@@ -200,7 +200,7 @@ describe("watcher debounce behavior", () => {
 
   test("debounce: rapid file changes result in correct final state", async () => {
     // Write initial file and pre-populate the DB (simulating index.ts startup)
-    const filePath = join(repo.docsDir, "plan-debounce.md");
+    const filePath = join(repo.docsDir, "adr-2026-04-10-debounce.md");
     writeFileSync(filePath, "# Doc\n\n## Initial\n\nInitial content.\n");
 
     // Pre-index the file directly
@@ -252,11 +252,11 @@ describe("watcher HEAD change detection", () => {
   test("lineage scan runs when HEAD changes after a file event", async () => {
     // Create initial commit with two docs
     writeFileSync(
-      join(repo.docsDir, "plan-a.md"),
+      join(repo.docsDir, "adr-2026-04-10-a.md"),
       "# Doc A\n\n## Section A\n\nContent A.\n"
     );
     writeFileSync(
-      join(repo.docsDir, "plan-b.md"),
+      join(repo.docsDir, "adr-2026-04-10-b.md"),
       "# Doc B\n\n## Section B\n\nContent B.\n"
     );
     gitCommit(repo.repoRoot, "initial commit");
@@ -274,18 +274,18 @@ describe("watcher HEAD change detection", () => {
 
     // Make a new commit with two docs modified (will produce lineage)
     writeFileSync(
-      join(repo.docsDir, "plan-a.md"),
+      join(repo.docsDir, "adr-2026-04-10-a.md"),
       "# Doc A\n\n## Section A\n\nUpdated A.\n"
     );
     writeFileSync(
-      join(repo.docsDir, "plan-b.md"),
+      join(repo.docsDir, "adr-2026-04-10-b.md"),
       "# Doc B\n\n## Section B\n\nUpdated B.\n"
     );
     gitCommit(repo.repoRoot, "update both docs");
 
     // Trigger a file event by touching a doc (watcher will pick it up)
     writeFileSync(
-      join(repo.docsDir, "plan-a.md"),
+      join(repo.docsDir, "adr-2026-04-10-a.md"),
       "# Doc A\n\n## Section A\n\nUpdated A again.\n"
     );
 

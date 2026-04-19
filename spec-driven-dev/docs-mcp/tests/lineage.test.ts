@@ -92,28 +92,28 @@ describe("getLineage", () => {
     db = makeTestDb();
 
     // Setup two docs with sections
-    insertDoc(db, "docs/plan-nats.md", "NATS Integration", "design");
-    insertDoc(db, "docs/plan-k8s.md", "K8s Integration", "design");
-    insertDoc(db, "docs/spec-schema.md", "State Schema", "spec");
+    insertDoc(db, "docs/adr-2026-04-17-nats-security.md", "NATS Integration", "adr");
+    insertDoc(db, "docs/adr-2026-04-10-k8s-integration.md", "K8s Integration", "adr");
+    insertDoc(db, "docs/spec-state-schema.md", "State Schema", "spec");
 
-    // Lineage edges: plan-nats Security ↔ plan-k8s Session Lifecycle
+    // Lineage edges: adr-nats Security ↔ adr-k8s Session Lifecycle
     insertLineage(
       db,
-      "docs/plan-nats.md", "Security",
-      "docs/plan-k8s.md", "Session Lifecycle",
+      "docs/adr-2026-04-17-nats-security.md", "Security",
+      "docs/adr-2026-04-10-k8s-integration.md", "Session Lifecycle",
       3, "abc123"
     );
     insertLineage(
       db,
-      "docs/plan-nats.md", "Security",
-      "docs/spec-schema.md", "KV Buckets",
+      "docs/adr-2026-04-17-nats-security.md", "Security",
+      "docs/spec-state-schema.md", "KV Buckets",
       5, "def456"
     );
   });
 
   test("returns lineage edges for a section", () => {
     const results = getLineage(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Security",
     });
     expect(results.length).toBe(2);
@@ -121,53 +121,53 @@ describe("getLineage", () => {
 
   test("includes doc metadata for related sections", () => {
     const results = getLineage(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Security",
     });
-    const k8sEdge = results.find((r) => r.doc_path === "docs/plan-k8s.md");
+    const k8sEdge = results.find((r) => r.doc_path === "docs/adr-2026-04-10-k8s-integration.md");
     expect(k8sEdge).toBeDefined();
     expect(k8sEdge!.doc_title).toBe("K8s Integration");
-    expect(k8sEdge!.category).toBe("design");
+    expect(k8sEdge!.category).toBe("adr");
     expect(k8sEdge!.heading).toBe("Session Lifecycle");
   });
 
   test("sorted by commit_count descending", () => {
     const results = getLineage(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Security",
     });
     expect(results[0].commit_count).toBeGreaterThanOrEqual(results[1].commit_count);
-    // spec-schema edge has count=5, k8s edge has count=3
-    expect(results[0].doc_path).toBe("docs/spec-schema.md");
+    // spec-state-schema edge has count=5, k8s edge has count=3
+    expect(results[0].doc_path).toBe("docs/spec-state-schema.md");
     expect(results[0].commit_count).toBe(5);
     expect(results[1].commit_count).toBe(3);
   });
 
   test("last_commit is returned", () => {
     const results = getLineage(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Security",
     });
-    const specEdge = results.find((r) => r.doc_path === "docs/spec-schema.md");
+    const specEdge = results.find((r) => r.doc_path === "docs/spec-state-schema.md");
     expect(specEdge!.last_commit).toBe("def456");
   });
 
   test("omits edges where doc no longer exists in index", () => {
-    // Remove the spec-schema doc
-    db.run("DELETE FROM documents WHERE path = 'docs/spec-schema.md'");
+    // Remove the spec-state-schema doc
+    db.run("DELETE FROM documents WHERE path = 'docs/spec-state-schema.md'");
 
     const results = getLineage(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Security",
     });
     // Only k8s edge remains
     expect(results.length).toBe(1);
-    expect(results[0].doc_path).toBe("docs/plan-k8s.md");
+    expect(results[0].doc_path).toBe("docs/adr-2026-04-10-k8s-integration.md");
   });
 
   test("returns empty array for section with no lineage", () => {
     const results = getLineage(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Overview",
     });
     expect(results).toHaveLength(0);

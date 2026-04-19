@@ -44,14 +44,14 @@ interface ListDoc {
 
 export const SearchDocsSchema = z.object({
   query: z.string().describe("Search query (FTS5 syntax: words, phrases, AND/OR/NOT)"),
-  category: z.enum(["design", "spec"]).optional().describe("Filter to design docs or specs"),
+  category: z.enum(["adr", "spec"]).optional().describe("Filter to ADRs or specs"),
   limit: z.number().int().positive().default(10).describe("Max results (default 10)"),
 });
 
 export const GetSectionSchema = z.object({
   doc_path: z
     .string()
-    .describe("Document path relative to repo root (e.g. docs/plan-k8s-integration.md)"),
+    .describe("Document path relative to repo root (e.g. docs/adr-2026-04-10-k8s-integration.md)"),
   heading: z.string().describe("Section heading text (e.g. Component Changes)"),
 });
 
@@ -61,7 +61,7 @@ export const GetLineageSchema = z.object({
 });
 
 export const ListDocsSchema = z.object({
-  category: z.enum(["design", "spec"]).optional().describe("Filter by category"),
+  category: z.enum(["adr", "spec"]).optional().describe("Filter by category"),
 });
 
 // ---- Tool implementations ----

@@ -83,32 +83,30 @@ describe("parseMarkdown", () => {
 });
 
 describe("classifyCategory", () => {
-  test("plan- prefix → design", () => {
-    expect(classifyCategory("docs/plan-k8s-integration.md")).toBe("design");
-    expect(classifyCategory("plan-foo.md")).toBe("design");
-  });
-
-  test("design- prefix → design", () => {
-    expect(classifyCategory("design-overview.md")).toBe("design");
-    expect(classifyCategory("docs/design-xyz.md")).toBe("design");
+  test("adr- prefix → adr", () => {
+    expect(classifyCategory("docs/adr-2026-04-10-k8s-integration.md")).toBe("adr");
+    expect(classifyCategory("adr-2026-04-19-foo.md")).toBe("adr");
   });
 
   test("spec- prefix → spec", () => {
     expect(classifyCategory("spec-tailscale-dns.md")).toBe("spec");
-  });
-
-  test("schema- prefix → spec", () => {
-    expect(classifyCategory("schema-state.md")).toBe("spec");
-  });
-
-  test("ui-spec → spec", () => {
-    expect(classifyCategory("ui-spec.md")).toBe("spec");
-    expect(classifyCategory("docs/ui-spec.md")).toBe("spec");
+    expect(classifyCategory("docs/spec-ui.md")).toBe("spec");
+    expect(classifyCategory("spec-state-schema.md")).toBe("spec");
   });
 
   test("feature-list → spec", () => {
     expect(classifyCategory("feature-list.md")).toBe("spec");
     expect(classifyCategory("feature-list-v2.md")).toBe("spec");
+  });
+
+  test("plan- prefix → null (removed)", () => {
+    expect(classifyCategory("plan-k8s-integration.md")).toBeNull();
+    expect(classifyCategory("docs/plan-foo.md")).toBeNull();
+  });
+
+  test("design- prefix → null (removed)", () => {
+    expect(classifyCategory("design-overview.md")).toBeNull();
+    expect(classifyCategory("docs/design-xyz.md")).toBeNull();
   });
 
   test("unrecognized → null", () => {

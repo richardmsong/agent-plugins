@@ -93,17 +93,17 @@ describe("getSection", () => {
 
   beforeEach(() => {
     db = makeTestDb();
-    const docId = insertDoc(db, "docs/plan-nats.md", "NATS Integration", "design");
+    const docId = insertDoc(db, "docs/adr-2026-04-17-nats-security.md", "NATS Integration", "adr");
     insertSection(db, docId, "Overview", "NATS JetStream overview content.", 3, 15);
     insertSection(db, docId, "Security", "JWT authentication required.", 16, 30);
 
-    const docId2 = insertDoc(db, "docs/spec-schema.md", "State Schema", "spec");
+    const docId2 = insertDoc(db, "docs/spec-state-schema.md", "State Schema", "spec");
     insertSection(db, docId2, "KV Buckets", "KV bucket definitions here.", 3, 20);
   });
 
   test("returns correct section content", () => {
     const result = getSection(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Overview",
     });
     expect(result.content).toBe("NATS JetStream overview content.");
@@ -112,12 +112,12 @@ describe("getSection", () => {
 
   test("returns full section metadata", () => {
     const result = getSection(db, {
-      doc_path: "docs/plan-nats.md",
+      doc_path: "docs/adr-2026-04-17-nats-security.md",
       heading: "Security",
     });
-    expect(result.doc_path).toBe("docs/plan-nats.md");
+    expect(result.doc_path).toBe("docs/adr-2026-04-17-nats-security.md");
     expect(result.doc_title).toBe("NATS Integration");
-    expect(result.category).toBe("design");
+    expect(result.category).toBe("adr");
     expect(result.heading).toBe("Security");
     expect(result.line_start).toBe(16);
     expect(result.line_end).toBe(30);
@@ -125,7 +125,7 @@ describe("getSection", () => {
 
   test("returns section from spec doc", () => {
     const result = getSection(db, {
-      doc_path: "docs/spec-schema.md",
+      doc_path: "docs/spec-state-schema.md",
       heading: "KV Buckets",
     });
     expect(result.doc_title).toBe("State Schema");
@@ -141,7 +141,7 @@ describe("getSection", () => {
 
   test("throws error for missing heading in existing doc", () => {
     expect(() =>
-      getSection(db, { doc_path: "docs/plan-nats.md", heading: "Nonexistent Heading" })
+      getSection(db, { doc_path: "docs/adr-2026-04-17-nats-security.md", heading: "Nonexistent Heading" })
     ).toThrow("Section not found");
   });
 
@@ -158,14 +158,14 @@ describe("listDocs", () => {
   beforeEach(() => {
     db = makeTestDb();
 
-    const docId1 = insertDoc(db, "docs/plan-nats.md", "NATS Integration", "design");
+    const docId1 = insertDoc(db, "docs/adr-2026-04-10-k8s-integration.md", "K8s Integration", "adr");
     insertSection(db, docId1, "Overview", "Overview content.", 3, 10);
     insertSection(db, docId1, "Security", "Security content.", 11, 20);
 
-    const docId2 = insertDoc(db, "docs/spec-schema.md", "State Schema", "spec");
+    const docId2 = insertDoc(db, "docs/spec-state-schema.md", "State Schema", "spec");
     insertSection(db, docId2, "KV Buckets", "KV bucket content.", 3, 15);
 
-    const docId3 = insertDoc(db, "docs/design-auth.md", "Auth Design", "design");
+    const docId3 = insertDoc(db, "docs/adr-2026-04-14-github-oauth.md", "GitHub OAuth", "adr");
     insertSection(db, docId3, "Overview", "Auth overview.", 3, 10);
   });
 
@@ -183,32 +183,32 @@ describe("listDocs", () => {
 
   test("sections contain heading, line_start, line_end", () => {
     const results = listDocs(db, {});
-    const nats = results.find((r) => r.doc_path === "docs/plan-nats.md");
-    expect(nats).toBeDefined();
-    expect(nats!.sections).toHaveLength(2);
-    expect(nats!.sections[0].heading).toBe("Overview");
-    expect(nats!.sections[0].line_start).toBe(3);
-    expect(nats!.sections[0].line_end).toBe(10);
+    const k8s = results.find((r) => r.doc_path === "docs/adr-2026-04-10-k8s-integration.md");
+    expect(k8s).toBeDefined();
+    expect(k8s!.sections).toHaveLength(2);
+    expect(k8s!.sections[0].heading).toBe("Overview");
+    expect(k8s!.sections[0].line_start).toBe(3);
+    expect(k8s!.sections[0].line_end).toBe(10);
   });
 
-  test("category filter returns only design docs", () => {
-    const results = listDocs(db, { category: "design" });
+  test("category filter returns only adr docs", () => {
+    const results = listDocs(db, { category: "adr" });
     expect(results.length).toBe(2);
     for (const doc of results) {
-      expect(doc.category).toBe("design");
+      expect(doc.category).toBe("adr");
     }
   });
 
   test("category filter returns only spec docs", () => {
     const results = listDocs(db, { category: "spec" });
     expect(results.length).toBe(1);
-    expect(results[0].doc_path).toBe("docs/spec-schema.md");
+    expect(results[0].doc_path).toBe("docs/spec-state-schema.md");
     expect(results[0].category).toBe("spec");
   });
 
   test("each doc entry includes doc_path and title", () => {
     const results = listDocs(db, {});
-    const schema = results.find((r) => r.doc_path === "docs/spec-schema.md");
+    const schema = results.find((r) => r.doc_path === "docs/spec-state-schema.md");
     expect(schema).toBeDefined();
     expect(schema!.title).toBe("State Schema");
     expect(schema!.category).toBe("spec");
@@ -218,15 +218,15 @@ describe("listDocs", () => {
     // No null-category docs exist in this fixture
     // Use a fresh empty db
     const emptyDb = makeTestDb();
-    const results = listDocs(emptyDb, { category: "design" });
+    const results = listDocs(emptyDb, { category: "adr" });
     expect(results).toHaveLength(0);
   });
 
   test("sections ordered by line_start", () => {
     const results = listDocs(db, {});
-    const nats = results.find((r) => r.doc_path === "docs/plan-nats.md");
-    expect(nats!.sections[0].heading).toBe("Overview");
-    expect(nats!.sections[1].heading).toBe("Security");
-    expect(nats!.sections[0].line_start).toBeLessThan(nats!.sections[1].line_start);
+    const k8s = results.find((r) => r.doc_path === "docs/adr-2026-04-10-k8s-integration.md");
+    expect(k8s!.sections[0].heading).toBe("Overview");
+    expect(k8s!.sections[1].heading).toBe("Security");
+    expect(k8s!.sections[0].line_start).toBeLessThan(k8s!.sections[1].line_start);
   });
 });

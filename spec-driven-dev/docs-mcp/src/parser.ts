@@ -73,11 +73,16 @@ export function parseMarkdown(content: string): ParsedDoc {
 
 /**
  * Classify a document category from its filename (basename).
+ *
+ * adr-*          → 'adr'
+ * spec-*         → 'spec'
+ * feature-list*  → 'spec'
+ * everything else → null
  */
-export function classifyCategory(filename: string): "design" | "spec" | null {
+export function classifyCategory(filename: string): "adr" | "spec" | null {
   // Strip directory components
   const base = filename.split("/").pop() ?? filename;
-  if (/^(plan-|design-)/.test(base)) return "design";
-  if (/^(spec-|schema-|ui-spec|feature-list)/.test(base)) return "spec";
+  if (/^adr-/.test(base)) return "adr";
+  if (/^(spec-|feature-list)/.test(base)) return "spec";
   return null;
 }

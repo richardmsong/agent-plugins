@@ -131,10 +131,10 @@ function cleanTempRepo(repoRoot: string) {
 describe("parseDiffHunks", () => {
   test("parses single file with single hunk", () => {
     const diff = [
-      "diff --git a/docs/plan-foo.md b/docs/plan-foo.md",
+      "diff --git a/docs/adr-2026-04-10-foo.md b/docs/adr-2026-04-10-foo.md",
       "index 1234..5678 100644",
-      "--- a/docs/plan-foo.md",
-      "+++ b/docs/plan-foo.md",
+      "--- a/docs/adr-2026-04-10-foo.md",
+      "+++ b/docs/adr-2026-04-10-foo.md",
       "@@ -10,3 +10,4 @@ ## Section One",
       " unchanged line",
       "+added line",
@@ -142,8 +142,8 @@ describe("parseDiffHunks", () => {
     ].join("\n");
 
     const result = parseDiffHunks(diff);
-    expect(result.has("docs/plan-foo.md")).toBe(true);
-    const hunks = result.get("docs/plan-foo.md")!;
+    expect(result.has("docs/adr-2026-04-10-foo.md")).toBe(true);
+    const hunks = result.get("docs/adr-2026-04-10-foo.md")!;
     expect(hunks.length).toBe(1);
     expect(hunks[0].startLine).toBe(10);
     expect(hunks[0].lineCount).toBe(4);
@@ -151,22 +151,22 @@ describe("parseDiffHunks", () => {
 
   test("parses multiple files", () => {
     const diff = [
-      "diff --git a/docs/plan-a.md b/docs/plan-a.md",
+      "diff --git a/docs/adr-2026-04-10-a.md b/docs/adr-2026-04-10-a.md",
       "@@ -5,3 +5,3 @@",
       " line",
-      "diff --git a/docs/plan-b.md b/docs/plan-b.md",
+      "diff --git a/docs/adr-2026-04-10-b.md b/docs/adr-2026-04-10-b.md",
       "@@ -20,2 +20,2 @@",
       " line",
     ].join("\n");
 
     const result = parseDiffHunks(diff);
-    expect(result.has("docs/plan-a.md")).toBe(true);
-    expect(result.has("docs/plan-b.md")).toBe(true);
+    expect(result.has("docs/adr-2026-04-10-a.md")).toBe(true);
+    expect(result.has("docs/adr-2026-04-10-b.md")).toBe(true);
   });
 
   test("parses multiple hunks in one file", () => {
     const diff = [
-      "diff --git a/docs/plan-foo.md b/docs/plan-foo.md",
+      "diff --git a/docs/adr-2026-04-10-foo.md b/docs/adr-2026-04-10-foo.md",
       "@@ -5,3 +5,3 @@",
       " line",
       "@@ -50,2 +50,4 @@",
@@ -174,7 +174,7 @@ describe("parseDiffHunks", () => {
     ].join("\n");
 
     const result = parseDiffHunks(diff);
-    const hunks = result.get("docs/plan-foo.md")!;
+    const hunks = result.get("docs/adr-2026-04-10-foo.md")!;
     expect(hunks.length).toBe(2);
     expect(hunks[0].startLine).toBe(5);
     expect(hunks[1].startLine).toBe(50);
@@ -186,14 +186,14 @@ describe("parseDiffHunks", () => {
       "diff --git a/src/index.ts b/src/index.ts",
       "@@ -1,3 +1,3 @@",
       " line",
-      "diff --git a/docs/plan-foo.md b/docs/plan-foo.md",
+      "diff --git a/docs/adr-2026-04-10-foo.md b/docs/adr-2026-04-10-foo.md",
       "@@ -5,3 +5,3 @@",
       " line",
     ].join("\n");
 
     const result = parseDiffHunks(diff);
     expect(result.has("src/index.ts")).toBe(false);
-    expect(result.has("docs/plan-foo.md")).toBe(true);
+    expect(result.has("docs/adr-2026-04-10-foo.md")).toBe(true);
   });
 
   test("returns empty map for empty diff", () => {
@@ -204,13 +204,13 @@ describe("parseDiffHunks", () => {
   test("handles hunk with no explicit line count (implicit 1)", () => {
     // @@ -10 +10 @@ (no comma means lineCount=1 by default)
     const diff = [
-      "diff --git a/docs/plan-foo.md b/docs/plan-foo.md",
+      "diff --git a/docs/adr-2026-04-10-foo.md b/docs/adr-2026-04-10-foo.md",
       "@@ -10 +10 @@",
       "+added line",
     ].join("\n");
 
     const result = parseDiffHunks(diff);
-    const hunks = result.get("docs/plan-foo.md")!;
+    const hunks = result.get("docs/adr-2026-04-10-foo.md")!;
     expect(hunks.length).toBe(1);
     expect(hunks[0].startLine).toBe(10);
     expect(hunks[0].lineCount).toBe(1);
@@ -228,7 +228,7 @@ describe("touchedSections", () => {
 
   test("returns section when hunk falls within it", () => {
     const hunks: DiffHunk[] = [
-      { filePath: "docs/plan-foo.md", startLine: 5, lineCount: 3 },
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 5, lineCount: 3 },
     ];
     const result = touchedSections(hunks, boundaries);
     expect(result).toContain("Overview");
@@ -238,8 +238,8 @@ describe("touchedSections", () => {
 
   test("returns multiple sections when hunks span them", () => {
     const hunks: DiffHunk[] = [
-      { filePath: "docs/plan-foo.md", startLine: 5, lineCount: 1 },   // Overview
-      { filePath: "docs/plan-foo.md", startLine: 45, lineCount: 2 },  // Security
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 5, lineCount: 1 },   // Overview
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 45, lineCount: 2 },  // Security
     ];
     const result = touchedSections(hunks, boundaries);
     expect(result).toContain("Overview");
@@ -249,7 +249,7 @@ describe("touchedSections", () => {
 
   test("returns empty array when no overlap", () => {
     const hunks: DiffHunk[] = [
-      { filePath: "docs/plan-foo.md", startLine: 100, lineCount: 5 },
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 100, lineCount: 5 },
     ];
     const result = touchedSections(hunks, boundaries);
     expect(result).toHaveLength(0);
@@ -258,7 +258,7 @@ describe("touchedSections", () => {
   test("hunk overlapping section boundary touches both sections", () => {
     // Hunk at 14-17 overlaps Overview (3-15) and Architecture (16-40)
     const hunks: DiffHunk[] = [
-      { filePath: "docs/plan-foo.md", startLine: 14, lineCount: 4 },
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 14, lineCount: 4 },
     ];
     const result = touchedSections(hunks, boundaries);
     expect(result).toContain("Overview");
@@ -272,7 +272,7 @@ describe("touchedSections", () => {
 
   test("returns empty array for empty boundaries", () => {
     const hunks: DiffHunk[] = [
-      { filePath: "docs/plan-foo.md", startLine: 5, lineCount: 3 },
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 5, lineCount: 3 },
     ];
     const result = touchedSections(hunks, []);
     expect(result).toHaveLength(0);
@@ -281,8 +281,8 @@ describe("touchedSections", () => {
   test("deduplicates section headings", () => {
     // Two hunks both touching Overview
     const hunks: DiffHunk[] = [
-      { filePath: "docs/plan-foo.md", startLine: 3, lineCount: 1 },
-      { filePath: "docs/plan-foo.md", startLine: 10, lineCount: 1 },
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 3, lineCount: 1 },
+      { filePath: "docs/adr-2026-04-10-foo.md", startLine: 10, lineCount: 1 },
     ];
     const result = touchedSections(hunks, boundaries);
     const overviewCount = result.filter((h) => h === "Overview").length;
@@ -323,7 +323,7 @@ describe("isGitAvailable / getHeadCommit", () => {
   });
 
   test("getHeadCommit returns commit hash after first commit", () => {
-    writeFileSync(join(repo.docsDir, "plan-foo.md"), "# Foo\n\n## Section\n\nContent.\n");
+    writeFileSync(join(repo.docsDir, "adr-2026-04-10-foo.md"), "# Foo\n\n## Section\n\nContent.\n");
     const hash = gitCommit(repo.repoRoot, "initial commit");
 
     const head = getHeadCommit(repo.repoRoot);
@@ -349,7 +349,7 @@ describe("runLineageScan", () => {
 
   test("no lineage when only one doc changed in a commit", () => {
     writeFileSync(
-      join(repo.docsDir, "plan-nats.md"),
+      join(repo.docsDir, "adr-2026-04-17-nats-security.md"),
       "# NATS\n\n## Overview\n\nNATS overview.\n\n## Security\n\nJWT auth.\n"
     );
     gitCommit(repo.repoRoot, "add nats doc");
@@ -363,11 +363,11 @@ describe("runLineageScan", () => {
   test("generates lineage edges when two docs modified in same commit", () => {
     // First commit: add two docs
     writeFileSync(
-      join(repo.docsDir, "plan-nats.md"),
+      join(repo.docsDir, "adr-2026-04-17-nats-security.md"),
       "# NATS\n\n## Overview\n\nNATS overview.\n\n## Security\n\nJWT auth.\n"
     );
     writeFileSync(
-      join(repo.docsDir, "plan-k8s.md"),
+      join(repo.docsDir, "adr-2026-04-10-k8s-integration.md"),
       "# K8s\n\n## Session Lifecycle\n\nSession states.\n\n## Provisioning\n\nHow to provision.\n"
     );
     gitCommit(repo.repoRoot, "add both docs");
@@ -381,11 +381,11 @@ describe("runLineageScan", () => {
 
   test("lineage edges are symmetric (A→B and B→A both exist)", () => {
     writeFileSync(
-      join(repo.docsDir, "plan-a.md"),
+      join(repo.docsDir, "adr-2026-04-10-a.md"),
       "# Doc A\n\n## Section A\n\nContent A.\n"
     );
     writeFileSync(
-      join(repo.docsDir, "plan-b.md"),
+      join(repo.docsDir, "adr-2026-04-10-b.md"),
       "# Doc B\n\n## Section B\n\nContent B.\n"
     );
     gitCommit(repo.repoRoot, "add both docs");
@@ -396,25 +396,25 @@ describe("runLineageScan", () => {
       .query<{ count: number }, [string, string, string, string]>(
         "SELECT count(*) as count FROM lineage WHERE section_a_doc=? AND section_a_heading=? AND section_b_doc=? AND section_b_heading=?"
       )
-      .get("docs/plan-a.md", "Section A", "docs/plan-b.md", "Section B");
+      .get("docs/adr-2026-04-10-a.md", "Section A", "docs/adr-2026-04-10-b.md", "Section B");
     expect(edgeAtoB!.count).toBe(1);
 
     const edgeBtoA = db
       .query<{ count: number }, [string, string, string, string]>(
         "SELECT count(*) as count FROM lineage WHERE section_a_doc=? AND section_a_heading=? AND section_b_doc=? AND section_b_heading=?"
       )
-      .get("docs/plan-b.md", "Section B", "docs/plan-a.md", "Section A");
+      .get("docs/adr-2026-04-10-b.md", "Section B", "docs/adr-2026-04-10-a.md", "Section A");
     expect(edgeBtoA!.count).toBe(1);
   });
 
   test("incremental scan: commit_count incremented on subsequent commits", () => {
     // First commit: add both docs
     writeFileSync(
-      join(repo.docsDir, "plan-a.md"),
+      join(repo.docsDir, "adr-2026-04-10-a.md"),
       "# Doc A\n\n## Section A\n\nContent A.\n"
     );
     writeFileSync(
-      join(repo.docsDir, "plan-b.md"),
+      join(repo.docsDir, "adr-2026-04-10-b.md"),
       "# Doc B\n\n## Section B\n\nContent B.\n"
     );
     gitCommit(repo.repoRoot, "add both docs");
@@ -423,11 +423,11 @@ describe("runLineageScan", () => {
 
     // Second commit: modify both docs again
     writeFileSync(
-      join(repo.docsDir, "plan-a.md"),
+      join(repo.docsDir, "adr-2026-04-10-a.md"),
       "# Doc A\n\n## Section A\n\nContent A updated.\n"
     );
     writeFileSync(
-      join(repo.docsDir, "plan-b.md"),
+      join(repo.docsDir, "adr-2026-04-10-b.md"),
       "# Doc B\n\n## Section B\n\nContent B updated.\n"
     );
     gitCommit(repo.repoRoot, "update both docs");
@@ -438,13 +438,13 @@ describe("runLineageScan", () => {
       .query<{ commit_count: number }, [string, string, string, string]>(
         "SELECT commit_count FROM lineage WHERE section_a_doc=? AND section_a_heading=? AND section_b_doc=? AND section_b_heading=?"
       )
-      .get("docs/plan-a.md", "Section A", "docs/plan-b.md", "Section B");
+      .get("docs/adr-2026-04-10-a.md", "Section A", "docs/adr-2026-04-10-b.md", "Section B");
     expect(edge!.commit_count).toBe(2);
   });
 
   test("stores last_lineage_commit in metadata after scan", () => {
-    writeFileSync(join(repo.docsDir, "plan-a.md"), "# A\n\n## Section A\n\nContent.\n");
-    writeFileSync(join(repo.docsDir, "plan-b.md"), "# B\n\n## Section B\n\nContent.\n");
+    writeFileSync(join(repo.docsDir, "adr-2026-04-10-a.md"), "# A\n\n## Section A\n\nContent.\n");
+    writeFileSync(join(repo.docsDir, "adr-2026-04-10-b.md"), "# B\n\n## Section B\n\nContent.\n");
     const hash = gitCommit(repo.repoRoot, "add docs");
 
     runLineageScan(db, repo.repoRoot);
