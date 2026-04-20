@@ -1,9 +1,10 @@
 # ADR: Component-Local Living Specs for Backend Components
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-20: draft
 - 2026-04-20: accepted — no existing specs to update; 9 new component specs authored during implementation
+- 2026-04-20: implemented — all 9 specs authored, spec-evaluator/dev-harness/plan-feature updated
 
 ## Overview
 
