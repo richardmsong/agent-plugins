@@ -1,13 +1,14 @@
 # ADR: Per-Component Doc Subfolders
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-19: draft
 - 2026-04-19: accepted — paired with `docs/spec-doc-layout.md` (new living spec)
+- 2026-04-19: implemented — renumber + UI split + reference migration in 98b45e0; docs-mcp parser recursion + status schema in 982a95d and d42f76a; spec-evaluator CLEAN
 
 > Supersedes the "per-concern only, v1" partitioning rule in
 > `adr-0021-docs-plan-spec-refactor.md` (formerly
-> `adr-0021-docs-plan-spec-refactor.md`). Supersedes the
+> `adr-2026-04-19-docs-plan-spec-refactor.md`). Supersedes the
 > `adr-YYYY-MM-DD-<slug>.md` naming convention from the same ADR.
 
 ## Overview

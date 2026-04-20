@@ -1,8 +1,9 @@
 # ADR: ADR Status Lifecycle
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-19: accepted
+- 2026-04-19: implemented — docs-mcp status column + parser + filters landed in 982a95d and d42f76a; spec-evaluator CLEAN
 
 ## Overview
 
