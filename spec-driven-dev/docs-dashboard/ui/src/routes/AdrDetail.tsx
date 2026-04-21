@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { fetchDoc, DocResponse } from "../api";
 import StatusBadge from "../components/StatusBadge";
 import MarkdownView from "../components/MarkdownView";
+import LineagePopover from "../components/LineagePopover";
 import type { SSEEvent } from "../App";
 
 interface AdrDetailProps {
@@ -60,6 +61,7 @@ export default function AdrDetail({ slug, navigate, lastEvent }: AdrDetailProps)
       <header style={styles.header}>
         <div style={styles.titleRow}>
           <h1 style={styles.title}>{doc.title ?? slug}</h1>
+          <LineagePopover docPath={doc.doc_path} heading={null} navigate={navigate} />
           <StatusBadge status={doc.status} />
         </div>
         <div style={styles.meta}>

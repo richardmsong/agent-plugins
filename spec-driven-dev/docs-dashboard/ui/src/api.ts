@@ -88,11 +88,11 @@ export async function fetchDoc(path: string): Promise<DocResponse> {
 
 export async function fetchLineage(
   doc: string,
-  heading: string
+  heading?: string | null
 ): Promise<LineageResult[]> {
-  return get<LineageResult[]>(
-    `/api/lineage?doc=${encodeURIComponent(doc)}&heading=${encodeURIComponent(heading)}`
-  );
+  const params = new URLSearchParams({ doc });
+  if (heading) params.set("heading", heading);
+  return get<LineageResult[]>(`/api/lineage?${params}`);
 }
 
 export async function fetchSearch(

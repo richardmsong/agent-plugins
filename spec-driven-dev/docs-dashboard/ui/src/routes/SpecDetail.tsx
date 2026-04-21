@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchDoc, DocResponse } from "../api";
 import MarkdownView from "../components/MarkdownView";
+import LineagePopover from "../components/LineagePopover";
 import type { SSEEvent } from "../App";
 
 interface SpecDetailProps {
@@ -52,6 +53,7 @@ export default function SpecDetail({ docPath, navigate, lastEvent }: SpecDetailP
       <header style={styles.header}>
         <div style={styles.titleRow}>
           <h1 style={styles.title}>{doc.title ?? docPath}</h1>
+          <LineagePopover docPath={doc.doc_path} heading={null} navigate={navigate} />
           <span style={styles.categoryBadge}>spec</span>
         </div>
         <div style={styles.meta}>

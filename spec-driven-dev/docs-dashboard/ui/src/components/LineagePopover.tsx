@@ -8,8 +8,17 @@ import { fetchLineage, LineageResult } from "../api";
 
 interface LineagePopoverProps {
   docPath: string;
-  heading: string;
+  /** Section mode: non-empty string. Doc mode: null or undefined. */
+  heading?: string | null;
   navigate: (href: string) => void;
+}
+
+/** Row after section-mode collapse or doc-mode pass-through. */
+interface CollapsedRow {
+  doc_path: string;
+  commit_count: number;
+  last_commit: string;
+  status: string | null;
 }
 
 function docPathToHash(docPath: string): string {
@@ -18,10 +27,68 @@ function docPathToHash(docPath: string): string {
   if (adrMatch) return `/adr/${adrMatch[1]}`;
 
   // docs/**/spec-*.md → #/spec/<path>
-  const specMatch = docPath.match(/spec-.+\.md$/);
-  if (specMatch) return `/spec/${docPath}`;
-
   return `/spec/${docPath}`;
+}
+
+/**
+ * Collapse section-granular LineageResult[] by doc_path.
+ * - count = SUM(commit_count)
+ * - last_commit taken from row with highest commit_count (ties: first row in response)
+ * - status taken from row with highest commit_count (ties: first row)
+ * - sorted descending by collapsed commit_count
+ */
+function collapseByDoc(rows: LineageResult[]): CollapsedRow[] {
+  const map = new Map<
+    string,
+    { commit_count: number; last_commit: string; status: string | null; maxSingle: number; maxSingleFirst: number }
+  >();
+
+  rows.forEach((r, idx) => {
+    const existing = map.get(r.doc_path);
+    if (!existing) {
+      map.set(r.doc_path, {
+        commit_count: r.commit_count,
+        last_commit: r.last_commit,
+        status: r.status,
+        maxSingle: r.commit_count,
+        maxSingleFirst: idx,
+      });
+    } else {
+      existing.commit_count += r.commit_count;
+      // Pick last_commit (and status) from the row with the highest single commit_count;
+      // ties go to the row that appeared first in the response.
+      if (
+        r.commit_count > existing.maxSingle ||
+        (r.commit_count === existing.maxSingle && idx < existing.maxSingleFirst)
+      ) {
+        existing.last_commit = r.last_commit;
+        existing.status = r.status;
+        existing.maxSingle = r.commit_count;
+        existing.maxSingleFirst = idx;
+      }
+    }
+  });
+
+  return Array.from(map.entries())
+    .map(([doc_path, v]) => ({
+      doc_path,
+      commit_count: v.commit_count,
+      last_commit: v.last_commit,
+      status: v.status,
+    }))
+    .sort((a, b) => b.commit_count - a.commit_count);
+}
+
+/**
+ * Pass-through: server already collapsed in doc mode. Convert to CollapsedRow shape.
+ */
+function passThrough(rows: LineageResult[]): CollapsedRow[] {
+  return rows.map((r) => ({
+    doc_path: r.doc_path,
+    commit_count: r.commit_count,
+    last_commit: r.last_commit,
+    status: r.status,
+  }));
 }
 
 function statusStyle(status: string | null): React.CSSProperties {
@@ -39,24 +106,29 @@ export default function LineagePopover({
   heading,
   navigate,
 }: LineagePopoverProps) {
+  const isDocMode = !heading; // heading is null, undefined, or ""
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const [results, setResults] = useState<LineageResult[]>([]);
+  const [rawResults, setRawResults] = useState<LineageResult[]>([]);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
 
+  const displayRows: CollapsedRow[] = isDocMode
+    ? passThrough(rawResults)
+    : collapseByDoc(rawResults);
+
   const load = useCallback(async () => {
-    if (results.length > 0 || loading) return;
+    if (rawResults.length > 0 || loading) return;
     setLoading(true);
     try {
-      const data = await fetchLineage(docPath, heading);
-      setResults(data);
+      const data = await fetchLineage(docPath, heading ?? undefined);
+      setRawResults(data);
     } catch {
-      setResults([]);
+      setRawResults([]);
     } finally {
       setLoading(false);
     }
-  }, [docPath, heading, results.length, loading]);
+  }, [docPath, heading, rawResults.length, loading]);
 
   const handleMouseEnter = useCallback(() => {
     setOpen(true);
@@ -111,6 +183,13 @@ export default function LineagePopover({
     };
   }, [open]);
 
+  // Graph link target differs by mode
+  const graphHref = isDocMode
+    ? `/graph?focus=${encodeURIComponent(docPath)}`
+    : `/graph?focus=${encodeURIComponent(docPath)}&section=${encodeURIComponent(heading ?? "")}`;
+
+  const popoverTitle = isDocMode ? docPath : heading ?? "";
+
   return (
     <span ref={containerRef} style={styles.wrapper}>
       <button
@@ -118,8 +197,8 @@ export default function LineagePopover({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
-        title="View lineage for this section"
-        aria-label={`Lineage for ${heading}`}
+        title={isDocMode ? "View doc-level lineage" : "View lineage for this section"}
+        aria-label={isDocMode ? `Doc lineage for ${docPath}` : `Lineage for ${heading ?? ""}`}
       >
         ≡
       </button>
@@ -130,36 +209,33 @@ export default function LineagePopover({
           onMouseLeave={handleMouseLeave}
         >
           <div style={styles.popoverHeader}>
-            Lineage: {heading}
+            Lineage: {popoverTitle}
             {pinned && <span style={styles.pinnedBadge}>pinned</span>}
           </div>
           {loading && <div style={styles.loadingText}>Loading…</div>}
-          {!loading && results.length === 0 && (
+          {!loading && displayRows.length === 0 && (
             <div style={styles.emptyText}>No co-committed sections found.</div>
           )}
           {!loading &&
-            results.map((r, i) => (
+            displayRows.map((r, i) => (
               <button
                 key={i}
                 style={{ ...styles.resultRow, ...statusStyle(r.status) }}
                 onClick={() => {
                   const hash = docPathToHash(r.doc_path);
-                  navigate(`${hash}#${encodeURIComponent(r.heading)}`);
+                  navigate(hash);
                   setPinned(false);
                   setOpen(false);
                 }}
               >
                 <span style={styles.count}>{r.commit_count}×</span>
                 <span style={styles.path}>{r.doc_path}</span>
-                <span style={styles.sectionLabel}>§{r.heading}</span>
               </button>
             ))}
           <button
             style={styles.graphLink}
             onClick={() => {
-              navigate(
-                `/graph?focus=${encodeURIComponent(docPath)}&section=${encodeURIComponent(heading)}`
-              );
+              navigate(graphHref);
               setPinned(false);
               setOpen(false);
             }}
@@ -256,11 +332,6 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     flex: 1,
-  },
-  sectionLabel: {
-    color: "#68d391",
-    flexShrink: 0,
-    fontSize: "0.75rem",
   },
   graphLink: {
     display: "block",
