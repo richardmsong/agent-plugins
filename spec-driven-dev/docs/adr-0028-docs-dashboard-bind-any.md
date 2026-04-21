@@ -1,8 +1,9 @@
 # ADR: Docs Dashboard Binds to `0.0.0.0`
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-21: accepted
+- 2026-04-21: implemented — all scope CLEAN
 
 ## Overview
 
