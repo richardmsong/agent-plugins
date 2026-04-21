@@ -105,7 +105,10 @@ server.tool(
 // Tool: get_lineage
 server.tool(
   "get_lineage",
-  "Find all sections co-modified with the given section in git history, sorted by co-commit count. " +
+  "Find documents or sections co-modified with a given doc/section in git history, sorted by co-commit count. " +
+  "When `heading` is omitted or empty, returns doc-level lineage: one row per co-committed document, aggregated " +
+  "across all sections of the queried doc — answers 'which ADRs shaped this whole spec?' in a single call. " +
+  "When `heading` is provided, returns section-level lineage for that specific H2 section. " +
   "Returned rows may include superseded or withdrawn ADRs — treat those as 'tried but not current' historical context. " +
   "Drafts are 'in-progress design thinking.' Use the `status` field for framing.",
   GetLineageSchema.shape,

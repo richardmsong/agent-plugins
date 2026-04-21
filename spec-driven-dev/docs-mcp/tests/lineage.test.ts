@@ -184,3 +184,173 @@ describe("getLineage", () => {
     expect(results).toHaveLength(0);
   });
 });
+
+// ============================================================
+// getLineage — doc mode (ADR-0031: heading absent or empty)
+// ============================================================
+
+describe("getLineage — doc mode", () => {
+  let db: Database;
+
+  beforeEach(() => {
+    db = makeTestDb();
+
+    // Three docs
+    insertDoc(db, "docs/adr-0027-docs-dashboard.md", "Docs Dashboard", "adr");
+    insertDoc(db, "docs/adr-0015-docs-mcp.md", "Docs MCP", "adr");
+    insertDoc(db, "docs/spec-docs-mcp.md", "Spec Docs MCP", "spec");
+
+    // adr-0027 Overview co-committed with adr-0015 Overview (count=2)
+    insertLineage(
+      db,
+      "docs/adr-0027-docs-dashboard.md", "Overview",
+      "docs/adr-0015-docs-mcp.md", "Overview",
+      2, "aaa111"
+    );
+    // adr-0027 Decisions co-committed with adr-0015 Data Model (count=1)
+    insertLineage(
+      db,
+      "docs/adr-0027-docs-dashboard.md", "Decisions",
+      "docs/adr-0015-docs-mcp.md", "Data Model",
+      1, "bbb222"
+    );
+    // adr-0027 Overview co-committed with spec-docs-mcp Role (count=3)
+    insertLineage(
+      db,
+      "docs/adr-0027-docs-dashboard.md", "Overview",
+      "docs/spec-docs-mcp.md", "Role",
+      3, "ccc333"
+    );
+    // adr-0027 Decisions co-committed with spec-docs-mcp Runtime (count=4)
+    insertLineage(
+      db,
+      "docs/adr-0027-docs-dashboard.md", "Decisions",
+      "docs/spec-docs-mcp.md", "Runtime",
+      4, "ddd444"
+    );
+  });
+
+  test("(a) doc mode: one row per co-committed doc, commit_count summed", () => {
+    // adr-0027 queried without heading → doc mode
+    // adr-0015 appears in two section-pairs: count 2+1=3
+    // spec-docs-mcp appears in two section-pairs: count 3+4=7
+    const results = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md" });
+
+    expect(results.length).toBe(2);
+
+    const adr15 = results.find((r) => r.doc_path === "docs/adr-0015-docs-mcp.md");
+    const specMcp = results.find((r) => r.doc_path === "docs/spec-docs-mcp.md");
+
+    expect(adr15).toBeDefined();
+    expect(adr15!.commit_count).toBe(3);
+
+    expect(specMcp).toBeDefined();
+    expect(specMcp!.commit_count).toBe(7);
+  });
+
+  test("(a) doc mode: ordered by commit_count desc", () => {
+    const results = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md" });
+    // spec-docs-mcp (7) should come before adr-0015 (3)
+    expect(results[0].doc_path).toBe("docs/spec-docs-mcp.md");
+    expect(results[0].commit_count).toBe(7);
+    expect(results[1].doc_path).toBe("docs/adr-0015-docs-mcp.md");
+    expect(results[1].commit_count).toBe(3);
+  });
+
+  test("(a) doc mode: heading field is empty string on every returned row", () => {
+    const results = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md" });
+    for (const row of results) {
+      expect(row.heading).toBe("");
+    }
+  });
+
+  test("(a) doc mode: result rows include doc metadata (doc_title, category, status)", () => {
+    const results = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md" });
+    const adr15 = results.find((r) => r.doc_path === "docs/adr-0015-docs-mcp.md");
+    expect(adr15!.doc_title).toBe("Docs MCP");
+    expect(adr15!.category).toBe("adr");
+  });
+
+  test("(a) doc mode: does not include self-reference row", () => {
+    // All edges use distinct docs, so self-reference shouldn't appear.
+    // Add a self-reference edge just to be sure the WHERE clause filters it.
+    db.run(
+      `INSERT INTO lineage(section_a_doc, section_a_heading, section_b_doc, section_b_heading, commit_count, last_commit)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        "docs/adr-0027-docs-dashboard.md", "Overview",
+        "docs/adr-0027-docs-dashboard.md", "Decisions",
+        99, "selfref"
+      ]
+    );
+    const results = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md" });
+    // Self-reference (same doc) should not appear
+    const selfRef = results.find((r) => r.doc_path === "docs/adr-0027-docs-dashboard.md");
+    expect(selfRef).toBeUndefined();
+  });
+
+  test("(b) section mode still works when heading is provided", () => {
+    // Section mode: heading = "Overview" → only the two edges from that section
+    const results = getLineage(db, {
+      doc_path: "docs/adr-0027-docs-dashboard.md",
+      heading: "Overview",
+    });
+
+    // adr-0015 Overview (count=2) + spec-docs-mcp Role (count=3)
+    expect(results.length).toBe(2);
+
+    const adr15 = results.find((r) => r.doc_path === "docs/adr-0015-docs-mcp.md");
+    expect(adr15).toBeDefined();
+    expect(adr15!.heading).toBe("Overview");     // real heading, not ""
+    expect(adr15!.commit_count).toBe(2);
+
+    const specMcp = results.find((r) => r.doc_path === "docs/spec-docs-mcp.md");
+    expect(specMcp).toBeDefined();
+    expect(specMcp!.heading).toBe("Role");       // real heading, not ""
+    expect(specMcp!.commit_count).toBe(3);
+  });
+
+  test("(b) section mode: sorted by commit_count desc", () => {
+    const results = getLineage(db, {
+      doc_path: "docs/adr-0027-docs-dashboard.md",
+      heading: "Decisions",
+    });
+    // spec-docs-mcp Runtime (count=4) before adr-0015 Data Model (count=1)
+    expect(results[0].doc_path).toBe("docs/spec-docs-mcp.md");
+    expect(results[0].commit_count).toBe(4);
+    expect(results[1].doc_path).toBe("docs/adr-0015-docs-mcp.md");
+    expect(results[1].commit_count).toBe(1);
+  });
+
+  test("(c) empty-string heading is treated as doc mode (same as absent heading)", () => {
+    const noHeading = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md" });
+    const emptyHeading = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md", heading: "" });
+
+    expect(emptyHeading.length).toBe(noHeading.length);
+
+    // Same rows, same order, same commit counts
+    for (let i = 0; i < noHeading.length; i++) {
+      expect(emptyHeading[i].doc_path).toBe(noHeading[i].doc_path);
+      expect(emptyHeading[i].commit_count).toBe(noHeading[i].commit_count);
+      expect(emptyHeading[i].heading).toBe("");
+    }
+  });
+
+  test("(c) empty-string heading rows all have heading=''", () => {
+    const results = getLineage(db, { doc_path: "docs/adr-0027-docs-dashboard.md", heading: "" });
+    for (const row of results) {
+      expect(row.heading).toBe("");
+    }
+  });
+
+  test("doc mode returns empty array for doc with no lineage", () => {
+    // adr-0015 is only ever the target (section_b), never the source (section_a)
+    const results = getLineage(db, { doc_path: "docs/adr-0015-docs-mcp.md" });
+    expect(results).toHaveLength(0);
+  });
+
+  test("doc mode returns empty array for unknown doc", () => {
+    const results = getLineage(db, { doc_path: "docs/nonexistent.md" });
+    expect(results).toHaveLength(0);
+  });
+});

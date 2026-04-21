@@ -65,8 +65,19 @@ export const GetSectionSchema = z.object({
 });
 
 export const GetLineageSchema = z.object({
-  doc_path: z.string().describe("Document path"),
-  heading: z.string().describe("Section heading"),
+  doc_path: z
+    .string()
+    .describe(
+      "Document path relative to repo root (e.g. docs/spec-state-schema.md)"
+    ),
+  heading: z
+    .string()
+    .optional()
+    .describe(
+      "Section heading (H2 text). When provided, returns section-level lineage for that heading. " +
+      "When omitted (or empty string), returns doc-level lineage: one row per co-committed document, " +
+      "aggregated across all sections of the queried doc — useful for 'which ADRs shaped this whole spec?'"
+    ),
 });
 
 export const ListDocsSchema = z.object({
@@ -158,6 +169,33 @@ export function getLineage(
   // are returned so callers can see historical context. Superseded/withdrawn ADRs
   // are "tried but not current"; drafts are "in-progress design thinking." Use
   // the `status` field for framing rather than filtering them out.
+
+  // Per ADR-0031: when heading is absent or empty string, use doc-level aggregation
+  // (one row per co-committed document, SUM(commit_count), MAX(last_commit), heading="").
+  // When heading is a non-empty string, use the existing section-mode query unchanged.
+  if (!heading) {
+    // Doc mode: aggregate across every section of the queried doc
+    return db
+      .query<LineageResult, [string]>(
+        `SELECT
+           d.path AS doc_path,
+           d.title AS doc_title,
+           d.category AS category,
+           '' AS heading,
+           d.status AS status,
+           SUM(l.commit_count) AS commit_count,
+           MAX(l.last_commit) AS last_commit
+         FROM lineage l
+         JOIN documents d ON d.path = l.section_b_doc
+         WHERE l.section_a_doc = ?
+           AND l.section_a_doc != l.section_b_doc
+         GROUP BY l.section_b_doc
+         ORDER BY commit_count DESC`
+      )
+      .all(doc_path);
+  }
+
+  // Section mode: existing behaviour, unchanged
   return db
     .query<LineageResult, [string, string]>(
       `SELECT
