@@ -53,6 +53,7 @@ export interface GraphEdge {
   from: string;
   to: string;
   count: number;
+  last_commit: string;
 }
 
 export interface GraphResponse {

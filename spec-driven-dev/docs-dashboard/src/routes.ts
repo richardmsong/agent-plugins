@@ -111,7 +111,9 @@ export function handleLineage(db: Database, url: URL): Response {
     if (err instanceof NotFoundError) {
       return notFound(docPath);
     }
-    return notFound(docPath);
+    // Any other error (DB error, SQL error, etc.) is a real server error — re-throw
+    // so Bun.serve's error handler emits a 500. Masking it as a 404 would hide bugs.
+    throw err;
   }
 }
 

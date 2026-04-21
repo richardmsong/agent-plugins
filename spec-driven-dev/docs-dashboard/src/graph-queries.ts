@@ -12,6 +12,7 @@ export interface GraphEdge {
   from: string;
   to: string;
   count: number;
+  last_commit: string;
 }
 
 export interface GraphResponse {
@@ -35,11 +36,12 @@ export function globalGraphQuery(db: Database): GraphResponse {
     .all();
 
   const rawEdges = db
-    .query<{ from_path: string; to_path: string; count: number }, []>(
+    .query<{ from_path: string; to_path: string; count: number; last_commit: string }, []>(
       `SELECT
          MIN(section_a_doc, section_b_doc) AS from_path,
          MAX(section_a_doc, section_b_doc) AS to_path,
-         SUM(commit_count)                 AS count
+         SUM(commit_count)                 AS count,
+         MAX(last_commit)                  AS last_commit
        FROM lineage
        WHERE section_a_doc != section_b_doc
        GROUP BY MIN(section_a_doc, section_b_doc), MAX(section_a_doc, section_b_doc)`
@@ -50,6 +52,7 @@ export function globalGraphQuery(db: Database): GraphResponse {
     from: r.from_path,
     to: r.to_path,
     count: r.count,
+    last_commit: r.last_commit,
   }));
 
   return { nodes, edges };
@@ -66,11 +69,12 @@ export function globalGraphQuery(db: Database): GraphResponse {
  */
 export function localGraphQuery(db: Database, focus: string): GraphResponse {
   const rawEdges = db
-    .query<{ from_path: string; to_path: string; count: number }, [string, string]>(
+    .query<{ from_path: string; to_path: string; count: number; last_commit: string }, [string, string]>(
       `SELECT
          MIN(section_a_doc, section_b_doc) AS from_path,
          MAX(section_a_doc, section_b_doc) AS to_path,
-         SUM(commit_count)                 AS count
+         SUM(commit_count)                 AS count,
+         MAX(last_commit)                  AS last_commit
        FROM lineage
        WHERE (section_a_doc = ? OR section_b_doc = ?)
          AND section_a_doc != section_b_doc
@@ -82,6 +86,7 @@ export function localGraphQuery(db: Database, focus: string): GraphResponse {
     from: r.from_path,
     to: r.to_path,
     count: r.count,
+    last_commit: r.last_commit,
   }));
 
   // Build neighbor set from edges

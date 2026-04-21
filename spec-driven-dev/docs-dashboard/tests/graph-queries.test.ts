@@ -93,6 +93,25 @@ describe("globalGraphQuery", () => {
     expect(edges.length).toBe(1);
     const edge = edges[0];
     expect(edge.count).toBe(5); // 3 + 2 aggregated
+    // last_commit: MAX("abc1234", "def5678") lexically = "def5678"
+    expect(typeof edge.last_commit).toBe("string");
+    expect(edge.last_commit.length).toBeGreaterThan(0);
+  });
+
+  it("returns last_commit on edge (single lineage row)", () => {
+    insertLineage(db, [
+      {
+        section_a_doc: "docs/adr-0001-feature-a.md",
+        section_a_heading: "Overview",
+        section_b_doc: "docs/spec-component-b.md",
+        section_b_heading: "Role",
+        commit_count: 5,
+        last_commit: "cafe123",
+      },
+    ]);
+    const { edges } = globalGraphQuery(db);
+    expect(edges.length).toBe(1);
+    expect(edges[0].last_commit).toBe("cafe123");
   });
 
   it("canonicalizes undirected edges (from < to)", () => {
@@ -222,5 +241,24 @@ describe("localGraphQuery", () => {
     const { edges } = localGraphQuery(db, "docs/adr-0001-feature-a.md");
     expect(edges.length).toBe(1);
     expect(edges[0].count).toBe(6); // 2 + 4
+    // last_commit: MAX("abc1234", "abc5678") lexically = "abc5678"
+    expect(typeof edges[0].last_commit).toBe("string");
+    expect(edges[0].last_commit.length).toBeGreaterThan(0);
+  });
+
+  it("returns last_commit on local edge (single lineage row)", () => {
+    insertLineage(db, [
+      {
+        section_a_doc: "docs/adr-0001-feature-a.md",
+        section_a_heading: "Overview",
+        section_b_doc: "docs/spec-component-b.md",
+        section_b_heading: "Role",
+        commit_count: 7,
+        last_commit: "deadbeef",
+      },
+    ]);
+    const { edges } = localGraphQuery(db, "docs/adr-0001-feature-a.md");
+    expect(edges.length).toBe(1);
+    expect(edges[0].last_commit).toBe("deadbeef");
   });
 });

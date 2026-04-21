@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Database } from "bun:sqlite";
-import { seedTestDb, insertLineage } from "./testutil";
+import { seedTestDb, insertLineage, createTestDb } from "./testutil";
 import {
   handleAdrs,
   handleSpecs,
@@ -175,6 +175,24 @@ describe("handleLineage", () => {
     const res = handleLineage(db, url);
     expect(res.status).toBe(400);
   });
+
+  it("re-throws (does not return 404) when a non-NotFoundError is thrown — e.g. closed DB", () => {
+    // Close the DB to force a real SQLiteError (not a NotFoundError).
+    // The old (buggy) code returned notFound(docPath) for ALL errors.
+    // The fixed code re-throws non-NotFoundError, so handleLineage should throw.
+    const { db: brokenDb, cleanup: cleanupBroken } = createTestDb();
+    brokenDb.close();
+
+    const url = new URL(
+      "http://localhost/api/lineage?doc=" +
+        encodeURIComponent("docs/adr-0001-test-feature.md") +
+        "&heading=" +
+        encodeURIComponent("Overview")
+    );
+
+    expect(() => handleLineage(brokenDb, url)).toThrow();
+    cleanupBroken();
+  });
 });
 
 // ---- /api/search ----
@@ -238,11 +256,45 @@ describe("handleGraph", () => {
     );
     const res = handleGraph(db, url);
     expect(res.status).toBe(200);
-    const data = await res.json() as { nodes: { path: string }[]; edges: unknown[] };
+    const data = await res.json() as { nodes: { path: string }[]; edges: { from: string; to: string; count: number; last_commit: string }[] };
     expect(data.nodes.length).toBeGreaterThan(0);
     const paths = data.nodes.map((n) => n.path);
     expect(paths).toContain("docs/adr-0001-test-feature.md");
     expect(paths).toContain("docs/spec-test-component.md");
+    // Edge must include last_commit
+    expect(data.edges.length).toBe(1);
+    expect(data.edges[0].last_commit).toBe("abc1234");
+  });
+
+  it("edges in global graph include last_commit field", async () => {
+    insertLineage(db, [
+      {
+        section_a_doc: "docs/adr-0001-test-feature.md",
+        section_a_heading: "Overview",
+        section_b_doc: "docs/spec-test-component.md",
+        section_b_heading: "Role",
+        commit_count: 4,
+        last_commit: "feedcafe",
+      },
+    ]);
+
+    const url = new URL("http://localhost/api/graph");
+    const res = handleGraph(db, url);
+    expect(res.status).toBe(200);
+    const data = await res.json() as { nodes: unknown[]; edges: { from: string; to: string; count: number; last_commit: string }[] };
+    expect(data.edges.length).toBeGreaterThan(0);
+    for (const edge of data.edges) {
+      expect(typeof edge.last_commit).toBe("string");
+      expect(edge.last_commit.length).toBeGreaterThan(0);
+    }
+    // Verify the specific edge
+    const edge = data.edges.find(
+      (e) =>
+        (e.from.includes("adr-0001") && e.to.includes("spec-test")) ||
+        (e.to.includes("adr-0001") && e.from.includes("spec-test"))
+    );
+    expect(edge).toBeDefined();
+    expect(edge!.last_commit).toBe("feedcafe");
   });
 
   it("returns only focus node for a focus doc with no lineage", async () => {

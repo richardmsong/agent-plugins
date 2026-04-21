@@ -18,6 +18,7 @@ interface ForceLink {
   source: string;
   target: string;
   count: number;
+  last_commit: string;
 }
 
 interface ForceData {
@@ -84,7 +85,12 @@ export default function Graph({ focus, section: _section, navigate }: GraphProps
     if (!data) return [];
     if (focus) {
       // Local mode: show all edges
-      return data.edges.map((e) => ({ source: e.from, target: e.to, count: e.count }));
+      return data.edges.map((e) => ({
+        source: e.from,
+        target: e.to,
+        count: e.count,
+        last_commit: e.last_commit,
+      }));
     }
     // Global mode: filter by category
     return data.edges
@@ -97,7 +103,12 @@ export default function Graph({ focus, section: _section, navigate }: GraphProps
         if (catA === "spec" && catB === "spec") return showSpecSpec;
         return false;
       })
-      .map((e) => ({ source: e.from, target: e.to, count: e.count }));
+      .map((e) => ({
+        source: e.from,
+        target: e.to,
+        count: e.count,
+        last_commit: e.last_commit,
+      }));
   }, [data, focus, showAdrAdr, showSpecSpec, categoryMap]);
 
   const forceData: ForceData = {
@@ -187,6 +198,10 @@ export default function Graph({ focus, section: _section, navigate }: GraphProps
               return 0.5 + (l.count / maxEdgeCount) * 3;
             }}
             linkColor={() => "#4a5568"}
+            linkLabel={(link) => {
+              const l = link as ForceLink;
+              return `${l.count}× — ${l.last_commit}`;
+            }}
             onNodeClick={handleNodeClick}
             cooldownTicks={100}
           />

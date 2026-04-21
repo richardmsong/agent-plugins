@@ -10,9 +10,19 @@ vi.mock("../api", () => ({
 
 import { fetchGraph } from "../api";
 
+// Captured linkLabel from the ForceGraph2D mock, so tests can assert its output
+let capturedLinkLabel: ((link: unknown) => string) | null = null;
+
 // Mock react-force-graph-2d — it's canvas-based and won't work in jsdom
 vi.mock("react-force-graph-2d", () => ({
-  default: ({ graphData }: { graphData: { nodes: { id: string }[]; links: unknown[] } }) => {
+  default: ({
+    graphData,
+    linkLabel,
+  }: {
+    graphData: { nodes: { id: string }[]; links: unknown[] };
+    linkLabel?: (link: unknown) => string;
+  }) => {
+    capturedLinkLabel = linkLabel ?? null;
     return (
       <div data-testid="force-graph">
         {graphData.nodes.map((n) => (
@@ -47,6 +57,7 @@ const fixtureResponse = {
       from: "docs/adr-0001-feature-a.md",
       to: "docs/spec-component-b.md",
       count: 5,
+      last_commit: "abc1234",
     },
   ],
 };
@@ -55,6 +66,7 @@ const navigate = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
+  capturedLinkLabel = null;
   (fetchGraph as ReturnType<typeof vi.fn>).mockResolvedValue(fixtureResponse);
 });
 
@@ -119,5 +131,40 @@ describe("Graph", () => {
     await waitFor(() => {
       expect(container.textContent).toContain("Error:");
     });
+  });
+
+  it("linkLabel shows count and last_commit short hash on edge hover", async () => {
+    render(<Graph navigate={navigate} />);
+    await waitFor(() => {
+      // The ForceGraph2D mock should have received a linkLabel prop
+      expect(capturedLinkLabel).not.toBeNull();
+    });
+
+    // Invoke the captured linkLabel with a ForceLink object
+    const label = capturedLinkLabel!({
+      source: "docs/adr-0001-feature-a.md",
+      target: "docs/spec-component-b.md",
+      count: 5,
+      last_commit: "abc1234",
+    });
+    // Format per spec: "<count>× — <last_commit_short_hash>"
+    expect(label).toContain("5×");
+    expect(label).toContain("abc1234");
+  });
+
+  it("linkLabel includes count and last_commit in local mode", async () => {
+    render(<Graph focus="docs/adr-0001-feature-a.md" navigate={navigate} />);
+    await waitFor(() => {
+      expect(capturedLinkLabel).not.toBeNull();
+    });
+
+    const label = capturedLinkLabel!({
+      source: "docs/adr-0001-feature-a.md",
+      target: "docs/spec-component-b.md",
+      count: 5,
+      last_commit: "abc1234",
+    });
+    expect(label).toContain("5×");
+    expect(label).toContain("abc1234");
   });
 });
