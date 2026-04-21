@@ -132,18 +132,22 @@ Returns `{doc_path, doc_title, category, heading, content, line_start, line_end}
 
 ### `get_lineage`
 
-Input: `{doc_path: string, heading: string}`.
+Input: `{doc_path: string, heading?: string}` (ADR-0031).
 
-Returns `LineageResult[]`: sections co-committed at least once with the requested section. Per ADR-0027, **no status filter is applied** — draft, superseded, and withdrawn ADRs all appear. Every row includes the linked doc's `status` so callers can frame historical rows appropriately (`superseded`/`withdrawn` = "tried but not current"; `draft` = "in-progress design thinking"). The tool's MCP description instructs agents to use `status` for this framing.
+**Section mode** — when `heading` is a non-empty string: returns `LineageResult[]` of sections co-committed at least once with the requested section.
 
-Ordered by `commit_count DESC`. `LineageResult` shape:
+**Doc mode** — when `heading` is absent or empty: returns `LineageResult[]` aggregated across every section of the requested doc, grouped by the co-committed document. One row per co-committed doc; `commit_count = SUM(commit_count)` across the underlying section-pair rows, `last_commit = MAX(last_commit)`; `heading = ""` on the returned rows to denote aggregated mode while keeping the schema non-null. Matches the collapse rule used by the dashboard's LineagePopover (ADR-0030), applied server-side so a single call answers "which docs shaped this whole spec."
+
+Per ADR-0027, **no status filter is applied** in either mode — draft, superseded, and withdrawn ADRs all appear. Every row includes the linked doc's `status` so callers can frame historical rows appropriately (`superseded`/`withdrawn` = "tried but not current"; `draft` = "in-progress design thinking"). The tool's MCP description instructs agents to use `status` for this framing.
+
+Ordered by `commit_count DESC` in both modes. `LineageResult` shape:
 
 ```ts
 interface LineageResult {
   doc_path: string;
   doc_title: string | null;
   category: string | null;
-  heading: string;
+  heading: string;           // "" in doc mode; real heading in section mode
   status: string | null;     // per ADR-0027
   commit_count: number;
   last_commit: string;
