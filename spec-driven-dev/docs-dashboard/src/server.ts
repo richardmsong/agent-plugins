@@ -1,5 +1,6 @@
 import { join } from "path";
 import { existsSync } from "fs";
+import { networkInterfaces } from "os";
 import { Database } from "bun:sqlite";
 import { boot } from "./boot.js";
 import {
@@ -33,6 +34,38 @@ function parseArgs(argv: string[]): { port: number; dbPath: string | null } {
   }
 
   return { port, dbPath };
+}
+
+// ---- Startup banner ----
+
+/**
+ * Build the multi-line startup banner.
+ *
+ * Format per spec-dashboard.md § Startup banner:
+ *   Dashboard ready:
+ *     http://127.0.0.1:<port>/
+ *     http://<iface-ipv4>:<port>/   (for each non-loopback IPv4)
+ *
+ * Loopback line is always first. Every subsequent line is a non-internal IPv4
+ * address from os.networkInterfaces(), in the order the OS returns them.
+ * IPv6 and interfaces flagged internal:true are skipped. If the host has no
+ * non-loopback IPv4, only the loopback line is included.
+ */
+export function buildStartupBanner(
+  port: number,
+  ifaces: ReturnType<typeof networkInterfaces> = networkInterfaces()
+): string {
+  const lines: string[] = [`Dashboard ready:`, `  http://127.0.0.1:${port}/`];
+
+  for (const ifaceList of Object.values(ifaces)) {
+    if (!ifaceList) continue;
+    for (const iface of ifaceList) {
+      if (iface.family !== "IPv4" || iface.internal) continue;
+      lines.push(`  http://${iface.address}:${port}/`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 // ---- SSE broker ----
@@ -149,7 +182,7 @@ async function main() {
   });
 
   const server = Bun.serve({
-    hostname: "127.0.0.1",
+    hostname: "0.0.0.0",
     port,
     fetch(req) {
       const url = new URL(req.url);
@@ -209,7 +242,7 @@ async function main() {
     },
   });
 
-  console.log(`Dashboard ready: http://127.0.0.1:${server.port}/`);
+  console.log(buildStartupBanner(server.port ?? port));
 }
 
 main().catch((err) => {
