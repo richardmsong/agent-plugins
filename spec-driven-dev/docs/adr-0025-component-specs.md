@@ -5,6 +5,7 @@
 - 2026-04-20: draft
 - 2026-04-20: accepted — no existing specs to update; 9 new component specs authored during implementation
 - 2026-04-20: implemented — all 9 specs authored, spec-evaluator/dev-harness/plan-feature updated
+- 2026-04-21: review pass — corrected connector (Cache-Control), mcp (Zod dep, create_session delay), cli (session list output), session-agent (Task* expansion). Lineage co-commit.
 
 ## Overview
 
