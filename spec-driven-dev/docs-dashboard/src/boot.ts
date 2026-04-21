@@ -3,6 +3,7 @@ import { existsSync } from "fs";
 import { join, dirname } from "path";
 import { openDb } from "mclaude-docs-mcp/db";
 import { indexAllDocs } from "mclaude-docs-mcp/content-indexer";
+import { runLineageScan } from "mclaude-docs-mcp/lineage-scanner";
 import { startWatcher } from "mclaude-docs-mcp/watcher";
 
 /**
@@ -65,6 +66,15 @@ export function boot(
   } catch (err) {
     console.error(`[dashboard] Initial index failed: ${err}`);
     // Non-fatal: continue, watcher will catch up
+  }
+
+  // Populate lineage from git log so the dashboard is self-sufficient
+  // even when docs-mcp has never run against this DB (ADR-0029).
+  try {
+    runLineageScan(db, repoRoot);
+  } catch (err) {
+    console.error(`[dashboard] Lineage scan failed: ${err}`);
+    // Non-fatal: dashboard still serves docs without lineage edges
   }
 
   const stopWatcher = startWatcher(db, docsDir, repoRoot, onReindex);
