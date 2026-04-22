@@ -152,11 +152,12 @@ export function indexAllDocs(db: Database, docsDir: string, repoRoot: string): s
 
   // Remove DB entries for files that no longer exist on disk
   const docPaths = files.map((f) => relative(repoRoot, f).replace(/\\/g, "/"));
+  const relDocsDir = relative(repoRoot, docsDir).replace(/\\/g, "/");
   const allIndexed = db
-    .query<{ path: string }, []>(
-      "SELECT path FROM documents WHERE path LIKE 'docs/%.md'"
+    .query<{ path: string }, [string]>(
+      "SELECT path FROM documents WHERE path LIKE ?"
     )
-    .all();
+    .all(`${relDocsDir}/%.md`);
 
   for (const row of allIndexed) {
     if (!docPaths.includes(row.path)) {
