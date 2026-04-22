@@ -54,11 +54,11 @@ SQLite file at `<repoRoot>/.agent/.docs-index.db`, opened in WAL mode with forei
 | `section_b_doc`    | TEXT    | doc_path of the second section.                                  |
 | `section_b_heading`| TEXT    | Heading of the second section.                                   |
 | `commit_count`     | INTEGER | Number of commits that touched both sections together. Default 1. |
-| `last_commit`      | TEXT    | Short hash of the most recent co-committing commit.              |
+| `last_commit`      | TEXT    | Full hash of the most recent co-committing commit.               |
 
 Primary key: `(section_a_doc, section_a_heading, section_b_doc, section_b_heading)`. The scanner writes each observed pair exactly once per (A, B) ordering; `get_lineage` queries only the `section_a = doc/heading` position, so lookups are symmetric only when the scanner chose to write both orderings.
 
-**`metadata`** — key/value store. Currently holds `schema_version` and `last_lineage_commit` (short hash of the most recent commit the lineage scanner has processed).
+**`metadata`** — key/value store. Currently holds `schema_version` and `last_lineage_commit` (full hash of the most recent commit the lineage scanner has processed).
 
 ## Parser (`src/parser.ts`)
 
@@ -85,7 +85,7 @@ interface ParsedDoc {
 ## Content indexer (`src/content-indexer.ts`)
 
 - `indexFile(db, absPath, repoRoot): boolean` — compares file mtime against the stored row's `mtime`; if identical, returns `false` without reparsing. Otherwise reads the file, calls `parseMarkdown`, upserts the `documents` row (writing `path`, `category`, `title`, `status`, `last_status_change`, `mtime`), replaces all rows in `sections` for that doc, and returns `true`. `commit_count` is never written by this function — it is owned by the lineage scanner.
-- `indexAllDocs(db, docsDir, repoRoot): string[]` — walks every `.md` file under `docsDir`, calls `indexFile` on each, and returns the repo-root-relative POSIX paths of files where `indexFile` returned `true`. After the walk, deletes `documents` rows whose `path` is no longer present on disk (cascade drops their sections).
+- `indexAllDocs(db, docsDir, repoRoot): string[]` — walks every `.md` file under `docsDir`, calls `indexFile` on each, and returns the repo-root-relative POSIX paths of files where `indexFile` returned `true`. After the walk, deletes `documents` rows whose `path` starts with `relative(repoRoot, docsDir)` but is no longer present on disk (cascade drops their sections). The prefix is derived dynamically — not hardcoded — so stale removal works regardless of where `docsDir` sits relative to the git root.
 - `removeFile(db, absPath, repoRoot)` — deletes the `documents` row for a file that has been removed from disk.
 
 ## Watcher (`src/watcher.ts`)
@@ -110,8 +110,8 @@ Runs on every boot of the MCP server, and again via the watcher whenever HEAD ad
 1. Compute the list of modified `.md` files under `relDocsDir`.
 2. For each modified file, increment `documents.commit_count` by 1 (per ADR-0027 — this runs **before** the `modifiedFiles.length < 2` check so solo commits are counted for volatility).
 3. If `modifiedFiles.length < 2`, return (no pairs to emit).
-4. Otherwise, parse each file at this commit's SHA, expand each file to its list of H2 sections modified in the diff (via line-range intersection), and for every ordered pair (section_a, section_b) across distinct files upsert a `lineage` row: `INSERT … ON CONFLICT DO UPDATE SET commit_count = commit_count + 1, last_commit = <short hash>`.
-5. Update `metadata.last_lineage_commit` to this commit's short hash.
+4. Otherwise, parse each file at this commit's SHA, expand each file to its list of H2 sections modified in the diff (via line-range intersection), and for every ordered pair (section_a, section_b) across distinct files upsert a `lineage` row: `INSERT … ON CONFLICT DO UPDATE SET commit_count = commit_count + 1, last_commit = <full commit hash>`.
+5. Update `metadata.last_lineage_commit` to the full commit hash.
 
 Incremental rescan: subsequent runs start where the previous run left off.
 
