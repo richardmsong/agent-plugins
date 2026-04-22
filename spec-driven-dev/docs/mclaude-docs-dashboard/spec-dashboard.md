@@ -122,7 +122,7 @@ A `≡` icon is rendered next to the H1 title on every spec and ADR detail page,
 
 | Hash route | Component | Description |
 |------------|-----------|-------------|
-| `#/` | `Landing.tsx` | ADRs bucketed by status (Drafts, Accepted, Implemented, Superseded, Withdrawn, Unspecified). Each bucket collapsible; Drafts expanded by default. Right column: specs grouped by directory. |
+| `#/` | `Landing.tsx` | ADRs bucketed by status (Drafts, Accepted, Implemented, Superseded, Withdrawn, Unspecified). Each bucket collapsible; all expanded by default (ADR-0035). Right column: specs grouped by directory. |
 | `#/adr/<slug>` | `AdrDetail.tsx` | Rendered ADR with status badge + history dates. H2 popovers. H1 lineage marker (ADR-0031). |
 | `#/spec/<path>` | `SpecDetail.tsx` | Rendered spec. H2 popovers. H1 lineage marker (ADR-0031). |
 | `#/search?q=<q>` | `SearchResults.tsx` | FTS5 results with snippets. |
