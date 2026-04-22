@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { listDocs, readRawDoc, getSection, getLineage, searchDocs, NotFoundError } from "mclaude-docs-mcp/tools";
+import { listDocs, readRawDoc, getLineage, searchDocs, NotFoundError } from "docs-mcp/tools";
 import { globalGraphQuery, localGraphQuery } from "./graph-queries.js";
 
 const CORS_HEADERS = {

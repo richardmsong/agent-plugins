@@ -36,12 +36,11 @@ Established by ADR-0027. Extended by ADR-0028 (bind `0.0.0.0`), ADR-0029 (`runLi
 
 The dashboard must not reimplement parsing, indexing, lineage scanning, watching, or tool-layer queries. It imports from `docs-mcp/src/` via workspace subpaths:
 
-- `parseMarkdown`, `classifyCategory` from `docs-mcp/parser`
 - `openDb` from `docs-mcp/db`
-- `indexFile`, `indexAllDocs` from `docs-mcp/content-indexer`
+- `indexAllDocs` from `docs-mcp/content-indexer`
 - `runLineageScan` from `docs-mcp/lineage-scanner`
 - `startWatcher` from `docs-mcp/watcher`
-- `searchDocs`, `getSection`, `getLineage`, `listDocs`, `readRawDoc`, `NotFoundError` from `docs-mcp/tools`
+- `listDocs`, `readRawDoc`, `getLineage`, `searchDocs`, `NotFoundError` from `docs-mcp/tools`
 
 HTTP handlers are thin wrappers: unmarshal parameters, call the function, JSON-encode the response.
 
