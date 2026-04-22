@@ -4,7 +4,7 @@
 
 `docs-dashboard` is a local development server that visualizes the ADR/spec corpus. It lists every ADR and spec, shows each ADR's status (`draft | accepted | implemented | superseded | withdrawn`) at a glance, renders spec-ADR lineage derived from git co-commits, and live-updates as files change on disk. It is a dev-only tool with no auth that reuses all indexing, parsing, lineage-scanning, and file-watching logic from `docs-mcp/src/` — the same functions the MCP server calls.
 
-Established by ADR-0027. Extended by ADR-0028 (bind `0.0.0.0`), ADR-0029 (`runLineageScan` in boot), ADR-0030 (LineagePopover doc-collapse), ADR-0031 (doc-level lineage), ADR-0032 (`--docs-dir` CLI flag).
+Established by ADR-0027. Extended by ADR-0028 (bind `0.0.0.0`), ADR-0029 (`runLineageScan` in boot), ADR-0030 (LineagePopover doc-collapse), ADR-0031 (doc-level lineage), ADR-0032 (`--docs-dir` CLI flag), ADR-0040 (line-level lineage popover with blame gutter, inline diff, and range filter).
 
 ## Runtime
 
@@ -54,6 +54,8 @@ HTTP handlers are thin wrappers: unmarshal parameters, call the function, JSON-e
 | GET | `/api/lineage?doc=<p>[&heading=<h>]` | Co-committed sections. `heading` optional (ADR-0031): absent/empty → doc-level aggregation; present → section-level. | `getLineage` |
 | GET | `/api/search?q=<q>&limit=<n>&category=<c>&status=<s>` | FTS search with snippets. | `searchDocs` |
 | GET | `/api/graph?focus=<p>` | Graph nodes + edges. Omit `focus` for global; provide for 1-hop local. | `graph-queries.ts` |
+| GET | `/api/blame?doc=<p>[&since=<date>&ref=<branch>]` | Per-block blame+lineage data. Self-joins `blame_lines` on commit to find co-modified ADRs. Optional `since`/`ref` for range-filtered blame (computed on demand). | `blame-queries.ts` |
+| GET | `/api/diff?doc=<p>&commit=<hash>&line_start=<n>&line_end=<n>` | Unified diff hunk from a specific commit overlapping the requested line range. | `git show` + hunk extraction |
 | GET | `/events` | SSE stream; emits `{type:"hello"}` on connect and `{type:"reindex",changed:[...]}` on watcher fires. | SSE broker in `server.ts` |
 | GET | `/` and `/assets/*` | Static SPA bundle from `ui/dist/`. | Bun static file serving |
 
@@ -79,6 +81,41 @@ interface GraphResponse {
   edges: { from: string; to: string; count: number; last_commit: string }[];
 }
 ```
+
+### `/api/blame` Response Shape
+
+```ts
+interface BlameBlock {
+  line_start: number;
+  line_end: number;
+  commit: string;
+  author: string;
+  date: string;           // ISO YYYY-MM-DD
+  summary: string;        // first line of commit message
+  adrs: {                 // ADRs co-modified in the same commit (self-join on blame_lines)
+    doc_path: string;
+    title: string | null;
+    status: string | null;
+  }[];
+}
+
+interface BlameResponse {
+  blocks: BlameBlock[];
+  uncommitted_lines: number[];  // source line numbers with no blame (working copy)
+}
+```
+
+When `since` or `ref` query params are provided, blame is computed on demand via `git blame --since=<date>` or `git blame <ref> -- <file>` instead of reading from the cached `blame_lines` table. Lines outside the range have `commit: null` in the response.
+
+### `/api/diff` Response Shape
+
+```ts
+interface DiffResponse {
+  diff: string;  // unified diff text for the requested line range
+}
+```
+
+Runs `git show <commit> -- <file>` and extracts only the hunks overlapping `[line_start, line_end]`. Returns empty string if the commit doesn't touch those lines.
 
 ### `/api/lineage` Response Shape
 
@@ -119,6 +156,34 @@ Collapses the `LineageResult[]` response from `/api/lineage` by `section_b_doc` 
 
 A `≡` icon is rendered next to the H1 title on every spec and ADR detail page, in addition to the per-H2 icons. Clicking/hovering calls `/api/lineage?doc=<p>` with no heading, returning doc-level aggregated rows. Popover row format is identical to the H2 collapsed row.
 
+## BlameGutter (`ui/src/components/BlameGutter.tsx`)
+
+Renders a VS Code-style blame gutter on the left margin of every spec and ADR detail page (ADR-0040). Each gutter annotation shows an abbreviated commit hash (7 chars) and author name. Consecutive rendered blocks attributed to the same commit are grouped into a single annotation spanning those blocks — no repeated annotations for adjacent same-commit lines.
+
+- Gutter is always visible when blame data is loaded.
+- Hovering a gutter annotation highlights the corresponding block(s) and opens the `LineBlamePopover`.
+- When a `BlameRangeFilter` is active, only blocks within the filtered range have gutter annotations; blocks outside the range show no annotation.
+
+## LineBlamePopover (`ui/src/components/LineBlamePopover.tsx`)
+
+Shows ADR lineage information for a rendered block on hover (ADR-0040). Displayed when the user hovers a block in the markdown body or a gutter annotation.
+
+- **Trigger**: hover with ~300ms debounce. The hovered block gets a subtle background highlight (`rgba(99,179,237,0.08)`) as immediate feedback.
+- **Content**: lists the ADR(s) co-committed with the blame commit(s) for the block's source lines, each with title and status badge. Below, secondary info: author name, date, commit summary.
+- **Uncommitted lines**: if the block's source lines have no blame data (working copy / unstaged), the popover shows section-level lineage with a "(working copy)" label.
+- **Pin/dismiss**: click pins the popover. Esc or outside-click unpins and dismisses. Same behavior as the existing `LineagePopover`.
+- **Inline diff**: in a pinned popover, each ADR/commit entry has an expand toggle. Clicking it fetches `GET /api/diff?doc=<p>&commit=<hash>&line_start=<n>&line_end=<n>` and renders the unified diff inline in the popover with syntax highlighting.
+
+## BlameRangeFilter (`ui/src/components/BlameRangeFilter.tsx`)
+
+A dropdown/date picker control rendered at the top of spec and ADR detail pages (ADR-0040). Allows the user to filter blame data by:
+
+- **Since date**: shows only commits after a given date (passes `since=<ISO date>` to `/api/blame`).
+- **Branch comparison**: shows only lines that differ between current branch and a target (passes `ref=<branch>` to `/api/blame`).
+- **Default**: "All time" — unfiltered, uses the cached `blame_lines` table.
+
+When the filter changes, the component refetches `/api/blame` with the new params and the gutter + popovers update accordingly. Lines not touched in the selected range show no gutter annotation and no popover on hover.
+
 ## MarkdownView (`ui/src/components/MarkdownView.tsx`)
 
 Renders raw markdown to styled HTML using `marked` with a custom renderer. Scoped by a `.markdown-body` CSS class with a dark-theme typography stylesheet (`ui/src/components/markdown-body.css`) that provides spacing, font sizes, borders, and backgrounds for all standard markdown elements (h1–h6, p, ul, ol, li, table, th, td, pre, code, blockquote, hr, img). The stylesheet uses descendant selectors scoped to `.markdown-body` to avoid leaking into the dashboard chrome. Theme colors match the existing dashboard palette (`#0d1117` backgrounds, `#e2e8f0` text, `#63b3ed` links, `#2d3748` borders) (ADR-0039).
@@ -127,6 +192,7 @@ The custom renderer also:
 - Applies `highlight.js` to fenced code blocks.
 - Rewrites relative `adr-*.md` and `spec-*.md` links to internal `#/adr/` and `#/spec/` hash routes.
 - Injects `LineagePopover` placeholders into H2 headings (hydrated after render via `createRoot`).
+- Emits `data-line-start` and `data-line-end` attributes on each rendered block element (paragraph, list item, table row, heading, code block) mapping it to the source markdown line range that produced it. After render, attaches hover listeners that highlight the block and trigger the `LineBlamePopover` (ADR-0040). The `marked` tokenizer already tracks token positions; the custom renderer threads these through to HTML attributes.
 
 ## UI Routes
 

@@ -4,7 +4,7 @@
 
 `docs-mcp` is a local-only MCP server (stdio transport) that gives agents structured access to the `docs/` corpus — ADRs and specs. It parses markdown files into H2 sections, indexes them in a SQLite database with FTS5 full-text search, scans git history to derive lineage edges between co-committed sections, and watches the filesystem to keep the index live. Four MCP tools — `search_docs`, `get_section`, `get_lineage`, `list_docs` — expose the index. Additional library functions in `src/tools.ts` are exported for sibling packages (notably `mclaude-docs-dashboard`) that consume the same data without duplicating logic.
 
-Established by ADR-0015 (the v1 design), extended by ADR-0018 (status column + status filters), extended by ADR-0027 (`commit_count` + `last_status_change` columns, lineage filter removal, `readRawDoc` helper).
+Established by ADR-0015 (the v1 design), extended by ADR-0018 (status column + status filters), extended by ADR-0027 (`commit_count` + `last_status_change` columns, lineage filter removal, `readRawDoc` helper), extended by ADR-0040 (`blame_lines` table + blame scanner for line-level attribution).
 
 ## Runtime
 
@@ -59,6 +59,29 @@ SQLite file at `<repoRoot>/.agent/.docs-index.db`, opened in WAL mode with forei
 Primary key: `(section_a_doc, section_a_heading, section_b_doc, section_b_heading)`. The scanner writes each observed pair exactly once per (A, B) ordering; `get_lineage` queries only the `section_a = doc/heading` position, so lookups are symmetric only when the scanner chose to write both orderings.
 
 **`metadata`** — key/value store. Currently holds `schema_version` and `last_lineage_commit` (full hash of the most recent commit the lineage scanner has processed).
+
+**`blame_lines`** — one row per line (or contiguous line group with the same commit) per document (ADR-0040). Populated by the blame scanner; rebuilt on file change.
+
+| Column       | Type    | Notes |
+|--------------|---------|-------|
+| `id`         | INTEGER | Primary key. |
+| `doc_id`     | INTEGER | FK → `documents.id`, `ON DELETE CASCADE`. |
+| `line_start` | INTEGER | 1-based start line in the source markdown file. |
+| `line_end`   | INTEGER | 1-based end line (inclusive). Consecutive lines with the same commit are grouped. |
+| `commit`     | TEXT    | Full commit hash from `git blame`. |
+| `author`     | TEXT    | Author name. |
+| `date`       | TEXT    | ISO date (`YYYY-MM-DD`). |
+| `summary`    | TEXT    | First line of the commit message. |
+
+Index: `(doc_id, line_start)` for fast range lookups. The dashboard's `/api/blame` endpoint self-joins this table on `commit` to find ADR docs co-modified in the same commit.
+
+## Blame scanner (`src/blame-scanner.ts`)
+
+Signature: `runBlameScan(db, repoRoot, docsDir)`. Runs `git blame --porcelain <file>` for each indexed doc, parses the porcelain output, groups consecutive lines with the same commit into ranges, and upserts rows into `blame_lines`. Deletes existing rows for a doc before inserting (full rebuild per file).
+
+Called on boot after `indexAllDocs` and `runLineageScan`. Also called by the watcher when a file changes — the watcher re-blames only the changed file(s).
+
+For files not tracked by git (new/untracked), no `blame_lines` rows are inserted. The dashboard treats lines with no blame as "working copy" and falls back to section-level lineage.
 
 ## Parser (`src/parser.ts`)
 
