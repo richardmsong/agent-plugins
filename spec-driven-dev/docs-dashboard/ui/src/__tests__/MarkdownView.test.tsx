@@ -28,7 +28,20 @@ describe("MarkdownView", () => {
     );
     const link = container.querySelector("a") as HTMLAnchorElement | null;
     expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("#/adr/0015-docs-mcp");
+    expect(link!.getAttribute("href")).toBe("#/adr/docs/adr-0015-docs-mcp");
+  });
+
+  it("rewrites nested ADR links preserving full path", () => {
+    const { container } = render(
+      <MarkdownView
+        markdown="See [ADR-0031](spec-driven-dev/docs/adr-0031-doc-level-lineage.md) for details."
+        docPath="docs/adr-0001-test.md"
+        navigate={navigate}
+      />
+    );
+    const link = container.querySelector("a") as HTMLAnchorElement | null;
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("href")).toBe("#/adr/spec-driven-dev/docs/adr-0031-doc-level-lineage");
   });
 
   it("rewrites spec links to hash routes", () => {

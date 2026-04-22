@@ -5,19 +5,12 @@ import { createRoot } from "react-dom/client";
 import LineagePopover from "./LineagePopover";
 
 // Convert a doc path to a hash route:
-// - docs/adr-*.md -> #/adr/<slug>
-// - docs/**/spec-*.md -> #/spec/<path>
+// - **/adr-*.md -> #/adr/<full-path-without-extension>
+// - **/spec-*.md -> #/spec/<full-path>
 function docLinkToHash(href: string): string | null {
-  // Match ADR links (e.g. docs/adr-0015-docs-mcp.md)
-  const adrMatch = href.match(/(?:^|.*\/)adr-(.+)\.md$/);
-  if (adrMatch) return `#/adr/${adrMatch[1]}`;
-
-  // Match spec links (e.g. docs/spec-state-schema.md or docs/subdir/spec-foo.md)
-  if (href.match(/spec-.+\.md$/)) {
-    if (href.startsWith("docs/")) return `#/spec/${href}`;
-    return `#/spec/docs/${href}`;
-  }
-
+  const base = href.split("/").pop() ?? "";
+  if (base.startsWith("adr-")) return `#/adr/${href.replace(/\.md$/, "")}`;
+  if (base.startsWith("spec-")) return `#/spec/${href}`;
   return null;
 }
 

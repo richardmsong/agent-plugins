@@ -47,8 +47,8 @@ function getNodeRadius(node: ForceNode): number {
 }
 
 function docPathToHash(docPath: string): string {
-  const adrMatch = docPath.match(/(?:^|.*\/)adr-(.+)\.md$/);
-  if (adrMatch) return `/adr/${adrMatch[1]}`;
+  const base = docPath.split("/").pop() ?? "";
+  if (base.startsWith("adr-")) return `/adr/${docPath.replace(/\.md$/, "")}`;
   return `/spec/${docPath}`;
 }
 

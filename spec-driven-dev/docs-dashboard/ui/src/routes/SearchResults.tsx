@@ -7,8 +7,8 @@ interface SearchResultsProps {
 }
 
 function docPathToHash(docPath: string, heading?: string): string {
-  const adrMatch = docPath.match(/(?:^|.*\/)adr-(.+)\.md$/);
-  const hash = adrMatch ? `/adr/${adrMatch[1]}` : `/spec/${docPath}`;
+  const base = docPath.split("/").pop() ?? "";
+  const hash = base.startsWith("adr-") ? `/adr/${docPath.replace(/\.md$/, "")}` : `/spec/${docPath}`;
   if (heading) return `${hash}#${encodeURIComponent(heading)}`;
   return hash;
 }
