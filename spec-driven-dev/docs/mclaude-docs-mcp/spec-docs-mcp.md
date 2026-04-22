@@ -2,7 +2,7 @@
 
 ## Role
 
-`mclaude-docs-mcp` is a local-only MCP server (stdio transport) that gives agents structured access to the `docs/` corpus — ADRs and specs. It parses markdown files into H2 sections, indexes them in a SQLite database with FTS5 full-text search, scans git history to derive lineage edges between co-committed sections, and watches the filesystem to keep the index live. Four MCP tools — `search_docs`, `get_section`, `get_lineage`, `list_docs` — expose the index. Additional library functions in `src/tools.ts` are exported for sibling packages (notably `mclaude-docs-dashboard`) that consume the same data without duplicating logic.
+`docs-mcp` is a local-only MCP server (stdio transport) that gives agents structured access to the `docs/` corpus — ADRs and specs. It parses markdown files into H2 sections, indexes them in a SQLite database with FTS5 full-text search, scans git history to derive lineage edges between co-committed sections, and watches the filesystem to keep the index live. Four MCP tools — `search_docs`, `get_section`, `get_lineage`, `list_docs` — expose the index. Additional library functions in `src/tools.ts` are exported for sibling packages (notably `mclaude-docs-dashboard`) that consume the same data without duplicating logic.
 
 Established by ADR-0015 (the v1 design), extended by ADR-0018 (status column + status filters), extended by ADR-0027 (`commit_count` + `last_status_change` columns, lineage filter removal, `readRawDoc` helper).
 
@@ -10,11 +10,12 @@ Established by ADR-0015 (the v1 design), extended by ADR-0018 (status column + s
 
 - Bun (loads `.ts` files natively; no build step).
 - Single-process; stdio transport for MCP. No HTTP, no auth, no network.
-- Entrypoint: `mclaude-docs-mcp/src/index.ts`. On boot: resolves repo root via a two-level ascent from `import.meta.url` (the entry file lives at `mclaude-docs-mcp/src/index.ts`, a fixed depth below the repo root); opens the SQLite DB at `<repoRoot>/mclaude-docs-mcp/.docs-index.db`; runs `indexAllDocs`; runs `runLineageScan` (initial lineage derivation from `git log`); starts `startWatcher` for the process lifetime; registers the four MCP tools.
+- Entrypoint: `docs-mcp/src/index.ts`. On boot: resolves repo root via `--root <dir>` CLI argument (required); opens the SQLite DB at `<repoRoot>/.agent/.docs-index.db`; runs `indexAllDocs`; runs `runLineageScan` (initial lineage derivation from `git log`); starts `startWatcher` for the process lifetime; registers the four MCP tools.
+- The dashboard (`docs-dashboard`) accepts a `--docs-dir <path>` flag (ADR-0032) to override the default `<repoRoot>/docs/` location. This is threaded through `boot() → indexAllDocs / startWatcher`.
 
 ## Data store
 
-SQLite file at `<repoRoot>/mclaude-docs-mcp/.docs-index.db`, opened in WAL mode with foreign keys on. Schema lives in the `SCHEMA_SQL` constant in `src/db.ts`. Schema version is tracked in the `metadata` table under key `schema_version`; on mismatch or corruption, `openDb` deletes the file and rebuilds from scratch. Current version: `"3"` (ADR-0027).
+SQLite file at `<repoRoot>/.agent/.docs-index.db`, opened in WAL mode with foreign keys on. Schema lives in the `SCHEMA_SQL` constant in `src/db.ts`. Schema version is tracked in the `metadata` table under key `schema_version`; on mismatch or corruption, `openDb` deletes the file and rebuilds from scratch. Current version: `"3"` (ADR-0027).
 
 ### Tables
 
@@ -184,7 +185,7 @@ Joins `repoRoot + docPath`, verifies the resolved path remains inside `repoRoot`
 
 ## Package exports
 
-`mclaude-docs-mcp/package.json` declares a subpath-per-module `exports` map so the dashboard (and future workspace consumers) can import individual modules directly:
+`docs-mcp/package.json` declares a subpath-per-module `exports` map so the dashboard (and future workspace consumers) can import individual modules directly:
 
 ```json
 "exports": {
