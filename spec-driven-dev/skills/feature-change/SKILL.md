@@ -238,7 +238,7 @@ git commit -m "spec(<slug>): promote ADR to implemented"
 
 The status flip is intentionally a separate commit so lineage lookup distinguishes "shape the spec" (the `draft -> accepted` co-commit) from "lands in code" (the `accepted -> implemented` ADR-only commit).
 
-Skip this step for ADRs that describe meta-process changes where there is no runtime code to evaluate — those stay in `accepted` (e.g. a skill rewrite).
+For meta-process ADRs (skill rewrites, workflow changes) where there is no runtime code to evaluate via spec-evaluator, promote to `implemented` once the described behavior is in place (e.g. the skill file is updated, the workflow is codified). Every ADR should eventually reach `implemented`.
 
 ---
 
