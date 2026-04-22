@@ -79,28 +79,36 @@ describe("Landing", () => {
     });
   });
 
-  it("draft bucket is expanded by default, accepted is collapsed", async () => {
+  it("all buckets are expanded by default (ADR-0035)", async () => {
     const { container } = render(<Landing navigate={navigate} lastEvent={null} />);
     await waitFor(() => {
+      // All status buckets expanded — draft, accepted, and implemented items all visible
       expect(container.textContent).toContain("ADR-0001: Feature A");
+      expect(container.textContent).toContain("ADR-0002: Feature B");
+      expect(container.textContent).toContain("ADR-0003: Feature C");
     });
-    // Feature B (accepted) should NOT be visible until expanded
-    expect(container.textContent).not.toContain("ADR-0002: Feature B");
   });
 
-  it("clicking a collapsed bucket expands it", async () => {
+  it("clicking an expanded bucket collapses it, clicking again re-expands it", async () => {
     const { container } = render(<Landing navigate={navigate} lastEvent={null} />);
     await waitFor(() => {
-      expect(container.textContent).toContain("ADR-0001: Feature A");
+      // All buckets expanded by default — Feature B (accepted) is visible
+      expect(container.textContent).toContain("ADR-0002: Feature B");
     });
 
-    // Find and click the accepted bucket header (contains "accepted" text)
+    // Click accepted bucket header to collapse it
     const buttons = Array.from(container.querySelectorAll("button"));
     const acceptedBtn = buttons.find((b) => b.textContent?.includes("accepted"));
     expect(acceptedBtn).not.toBeUndefined();
     fireEvent.click(acceptedBtn!);
 
-    // Feature B should now be visible with ADR number prefix
+    // Feature B should now be hidden
+    await waitFor(() => {
+      expect(container.textContent).not.toContain("ADR-0002: Feature B");
+    });
+
+    // Click again to re-expand
+    fireEvent.click(acceptedBtn!);
     await waitFor(() => {
       expect(container.textContent).toContain("ADR-0002: Feature B");
     });

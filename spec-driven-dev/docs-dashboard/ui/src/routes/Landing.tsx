@@ -25,8 +25,15 @@ const STATUS_ORDER: AdrStatus[] = [
   "unspecified",
 ];
 
-// By default, only drafts are expanded
-const DEFAULT_EXPANDED: Record<string, boolean> = { draft: true };
+// All status buckets are expanded by default (ADR-0035)
+const DEFAULT_EXPANDED: Record<string, boolean> = {
+  draft: true,
+  accepted: true,
+  implemented: true,
+  superseded: true,
+  withdrawn: true,
+  unspecified: true,
+};
 
 function adrSlug(docPath: string): string {
   return docPath.replace(/^docs\//, "").replace(/\.md$/, "").replace(/^adr-/, "");
