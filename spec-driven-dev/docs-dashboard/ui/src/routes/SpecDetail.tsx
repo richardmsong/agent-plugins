@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { fetchDoc, DocResponse } from "../api";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { fetchDoc, fetchBlame, DocResponse, BlameBlock, BlameResponse } from "../api";
 import MarkdownView from "../components/MarkdownView";
 import LineagePopover from "../components/LineagePopover";
+import BlameGutter from "../components/BlameGutter";
+import BlameRangeFilter, { BlameRange } from "../components/BlameRangeFilter";
+import LineBlamePopover from "../components/LineBlamePopover";
 import type { SSEEvent } from "../App";
 
 interface SpecDetailProps {
@@ -10,10 +13,27 @@ interface SpecDetailProps {
   lastEvent: SSEEvent | null;
 }
 
+interface PopoverState {
+  block: BlameBlock | null;
+  isUncommitted: boolean;
+  lineStart: number;
+  lineEnd: number;
+  top: number;
+  left: number;
+  pinned: boolean;
+}
+
 export default function SpecDetail({ docPath, navigate, lastEvent }: SpecDetailProps) {
   const [doc, setDoc] = useState<DocResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [blameData, setBlameData] = useState<BlameResponse | null>(null);
+  const [blameRange, setBlameRange] = useState<BlameRange>({ mode: "all" });
+
+  const [popover, setPopover] = useState<PopoverState | null>(null);
+  const [hoveredBlockIndex, setHoveredBlockIndex] = useState<number | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
     setLoading(true);
@@ -33,20 +53,118 @@ export default function SpecDetail({ docPath, navigate, lastEvent }: SpecDetailP
     }
   }
 
+  async function loadBlame(range: BlameRange) {
+    try {
+      const data = await fetchBlame(
+        docPath,
+        range.mode === "since" ? range.since : undefined,
+        range.mode === "branch" ? range.ref : undefined,
+      );
+      setBlameData(data);
+    } catch {
+      setBlameData({ blocks: [], uncommitted_lines: [] });
+    }
+  }
+
   useEffect(() => {
     load();
+  }, [docPath]);
+
+  useEffect(() => {
+    loadBlame(blameRange);
   }, [docPath]);
 
   // Refetch if this doc was reindexed
   useEffect(() => {
     if (lastEvent?.type === "reindex" && lastEvent.changed.includes(docPath)) {
       load();
+      loadBlame(blameRange);
     }
   }, [lastEvent]);
+
+  function handleRangeChange(range: BlameRange) {
+    setBlameRange(range);
+    loadBlame(range);
+  }
+
+  const handleBlockHover = useCallback(
+    (
+      block: BlameBlock | null,
+      isUncommitted: boolean,
+      lineStart: number,
+      lineEnd: number,
+      event: MouseEvent,
+    ) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      const blocks = blameData?.blocks ?? [];
+      const idx = blocks.findIndex((b) => b.line_start === lineStart && b.line_end === lineEnd);
+      setHoveredBlockIndex(idx >= 0 ? idx : null);
+
+      debounceRef.current = setTimeout(() => {
+        if (popover?.pinned) return;
+        setPopover({
+          block,
+          isUncommitted,
+          lineStart,
+          lineEnd,
+          top: event.clientY + 12,
+          left: event.clientX,
+          pinned: false,
+        });
+      }, 300);
+    },
+    [blameData, popover],
+  );
+
+  const handleBlockLeave = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setHoveredBlockIndex(null);
+    if (!popover?.pinned) {
+      setPopover(null);
+    }
+  }, [popover]);
+
+  const handleGutterHover = useCallback(
+    (blockIndex: number, event: React.MouseEvent) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setHoveredBlockIndex(blockIndex);
+      const block = blameData?.blocks[blockIndex] ?? null;
+      if (block) {
+        setPopover({
+          block,
+          isUncommitted: false,
+          lineStart: block.line_start,
+          lineEnd: block.line_end,
+          top: event.clientY + 12,
+          left: event.clientX,
+          pinned: popover?.pinned ?? false,
+        });
+      }
+    },
+    [blameData, popover],
+  );
+
+  const handleGutterLeave = useCallback(() => {
+    setHoveredBlockIndex(null);
+    if (!popover?.pinned) setPopover(null);
+  }, [popover]);
+
+  const handlePin = useCallback(() => {
+    setPopover((prev) => prev ? { ...prev, pinned: !prev.pinned } : prev);
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    setPopover(null);
+    setHoveredBlockIndex(null);
+  }, []);
 
   if (loading) return <div style={styles.loading}>Loading…</div>;
   if (error) return <div style={styles.error}>{error}</div>;
   if (!doc) return null;
+
+  const blocks = blameData?.blocks ?? [];
+  const uncommittedLines = blameData?.uncommitted_lines ?? [];
 
   return (
     <article style={styles.article}>
@@ -63,21 +181,53 @@ export default function SpecDetail({ docPath, navigate, lastEvent }: SpecDetailP
           )}
         </div>
       </header>
-      <MarkdownView
-        markdown={doc.raw_markdown}
-        docPath={doc.doc_path}
-        navigate={navigate}
-      />
+
+      <BlameRangeFilter value={blameRange} onChange={handleRangeChange} />
+
+      <div style={styles.contentRow}>
+        {blocks.length > 0 && (
+          <BlameGutter
+            blocks={blocks}
+            hoveredBlockIndex={hoveredBlockIndex}
+            onAnnotationHover={handleGutterHover}
+            onAnnotationLeave={handleGutterLeave}
+          />
+        )}
+        <div style={styles.markdownWrapper}>
+          <MarkdownView
+            markdown={doc.raw_markdown}
+            docPath={doc.doc_path}
+            navigate={navigate}
+            blameBlocks={blocks}
+            uncommittedLines={uncommittedLines}
+            onBlockHover={handleBlockHover}
+            onBlockLeave={handleBlockLeave}
+          />
+        </div>
+      </div>
+
+      {popover && (
+        <LineBlamePopover
+          block={popover.block}
+          isUncommitted={popover.isUncommitted}
+          anchorTop={popover.top}
+          anchorLeft={popover.left}
+          docPath={doc.doc_path}
+          pinned={popover.pinned}
+          onPin={handlePin}
+          onDismiss={handleDismiss}
+        />
+      )}
     </article>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
   article: {
-    maxWidth: "860px",
+    maxWidth: "960px",
   },
   header: {
-    marginBottom: "2rem",
+    marginBottom: "1rem",
     paddingBottom: "1rem",
     borderBottom: "1px solid #2d3748",
   },
@@ -114,6 +264,16 @@ const styles: Record<string, React.CSSProperties> = {
   commitCount: {
     fontSize: "0.8rem",
     color: "#718096",
+  },
+  contentRow: {
+    display: "flex",
+    gap: "0",
+    alignItems: "flex-start",
+  },
+  markdownWrapper: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: "1rem",
   },
   loading: {
     color: "#718096",

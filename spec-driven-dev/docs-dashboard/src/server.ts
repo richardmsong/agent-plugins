@@ -10,6 +10,8 @@ import {
   handleLineage,
   handleSearch,
   handleGraph,
+  handleBlame,
+  handleDiff,
 } from "./routes.js";
 
 // ---- CLI flag parsing ----
@@ -239,6 +241,12 @@ async function main() {
       }
       if (req.method === "GET" && url.pathname === "/api/graph") {
         return handleGraph(db, url);
+      }
+      if (req.method === "GET" && url.pathname === "/api/blame") {
+        return handleBlame(db, repoRoot, url);
+      }
+      if (req.method === "GET" && url.pathname === "/api/diff") {
+        return handleDiff(repoRoot, url);
       }
 
       // Static SPA

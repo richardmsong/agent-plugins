@@ -7,9 +7,10 @@ import AdrDetail from "../routes/AdrDetail";
 vi.mock("../api", () => ({
   fetchDoc: vi.fn(),
   fetchLineage: vi.fn(),
+  fetchBlame: vi.fn(),
 }));
 
-import { fetchDoc, fetchLineage } from "../api";
+import { fetchDoc, fetchLineage, fetchBlame } from "../api";
 
 const mockDoc = {
   doc_path: "docs/adr-0027-docs-dashboard.md",
@@ -27,6 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   (fetchDoc as ReturnType<typeof vi.fn>).mockResolvedValue(mockDoc);
   (fetchLineage as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+  (fetchBlame as ReturnType<typeof vi.fn>).mockResolvedValue({ blocks: [], uncommitted_lines: [] });
 });
 
 describe("AdrDetail — nested doc_path slug (ADR-0035)", () => {
@@ -113,6 +115,29 @@ describe("AdrDetail — H1 lineage icon (ADR-0031)", () => {
     );
     await waitFor(() => {
       expect(container.textContent).toContain("accepted");
+    });
+  });
+});
+
+describe("AdrDetail — BlameRangeFilter (ADR-0040)", () => {
+  it("renders the BlameRangeFilter dropdown", async () => {
+    const { container } = render(
+      <AdrDetail slug="0027-docs-dashboard" navigate={navigate} lastEvent={null} />
+    );
+    await waitFor(() => {
+      expect(container.textContent).toContain("Docs Dashboard");
+    });
+    const select = container.querySelector("select");
+    expect(select).not.toBeNull();
+    expect(select!.textContent).toContain("All time");
+  });
+
+  it("calls fetchBlame on mount", async () => {
+    render(
+      <AdrDetail slug="0027-docs-dashboard" navigate={navigate} lastEvent={null} />
+    );
+    await waitFor(() => {
+      expect(fetchBlame).toHaveBeenCalledWith("0027-docs-dashboard.md", undefined, undefined);
     });
   });
 });

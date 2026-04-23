@@ -110,3 +110,56 @@ export async function fetchGraph(focus?: string): Promise<GraphResponse> {
   const params = focus ? `?focus=${encodeURIComponent(focus)}` : "";
   return get<GraphResponse>(`/api/graph${params}`);
 }
+
+// ---- Blame / Diff types (ADR-0040) ----
+
+export interface BlameAdr {
+  doc_path: string;
+  title: string | null;
+  status: string | null;
+}
+
+export interface BlameBlock {
+  line_start: number;
+  line_end: number;
+  commit: string;
+  author: string;
+  date: string;
+  summary: string;
+  adrs: BlameAdr[];
+}
+
+export interface BlameResponse {
+  blocks: BlameBlock[];
+  uncommitted_lines: number[];
+}
+
+export interface DiffResponse {
+  diff: string;
+}
+
+export async function fetchBlame(
+  docPath: string,
+  since?: string,
+  ref?: string,
+): Promise<BlameResponse> {
+  const params = new URLSearchParams({ doc: docPath });
+  if (since) params.set("since", since);
+  if (ref) params.set("ref", ref);
+  return get<BlameResponse>(`/api/blame?${params}`);
+}
+
+export async function fetchDiff(
+  docPath: string,
+  commit: string,
+  lineStart: number,
+  lineEnd: number,
+): Promise<DiffResponse> {
+  const params = new URLSearchParams({
+    doc: docPath,
+    commit,
+    line_start: String(lineStart),
+    line_end: String(lineEnd),
+  });
+  return get<DiffResponse>(`/api/diff?${params}`);
+}

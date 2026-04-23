@@ -4,6 +4,7 @@ import { join, dirname, resolve } from "path";
 import { openDb } from "docs-mcp/db";
 import { indexAllDocs } from "docs-mcp/content-indexer";
 import { runLineageScan } from "docs-mcp/lineage-scanner";
+import { runBlameScan } from "docs-mcp/blame-scanner";
 import { startWatcher } from "docs-mcp/watcher";
 
 /**
@@ -79,10 +80,18 @@ export function boot(
   // Populate lineage from git log so the dashboard is self-sufficient
   // even when docs-mcp has never run against this DB (ADR-0029).
   try {
-    runLineageScan(db, repoRoot);
+    runLineageScan(db, repoRoot, resolvedDocsDir);
   } catch (err) {
     console.error(`[dashboard] Lineage scan failed: ${err}`);
     // Non-fatal: dashboard still serves docs without lineage edges
+  }
+
+  // Populate blame data for line-level lineage popover (ADR-0040).
+  try {
+    runBlameScan(db, repoRoot, resolvedDocsDir);
+  } catch (err) {
+    console.error(`[dashboard] Blame scan failed: ${err}`);
+    // Non-fatal: dashboard still serves docs without blame data
   }
 
   const stopWatcher = startWatcher(db, resolvedDocsDir, repoRoot, onReindex);

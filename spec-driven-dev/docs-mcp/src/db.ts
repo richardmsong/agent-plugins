@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS blame_lines (
   doc_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   line_start INTEGER NOT NULL,
   line_end INTEGER NOT NULL,
-  commit TEXT NOT NULL,
+  "commit" TEXT NOT NULL,
   author TEXT NOT NULL,
   date TEXT NOT NULL,
   summary TEXT NOT NULL

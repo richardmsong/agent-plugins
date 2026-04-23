@@ -112,4 +112,63 @@ describe("MarkdownView", () => {
       encodeURIComponent("My Section")
     );
   });
+
+  it("emits data-line-start and data-line-end on paragraph elements (ADR-0040)", () => {
+    const { container } = render(
+      <MarkdownView
+        markdown={"# Title\n\nFirst paragraph.\n\nSecond paragraph.\n"}
+        docPath="docs/adr-0001-test.md"
+        navigate={navigate}
+      />
+    );
+    const paragraphs = container.querySelectorAll("p[data-line-start]");
+    expect(paragraphs.length).toBeGreaterThan(0);
+    // First paragraph starts at line 3 (after heading + blank line)
+    const firstP = paragraphs[0] as HTMLElement;
+    const lineStart = parseInt(firstP.getAttribute("data-line-start") ?? "0", 10);
+    const lineEnd = parseInt(firstP.getAttribute("data-line-end") ?? "0", 10);
+    expect(lineStart).toBeGreaterThan(0);
+    expect(lineEnd).toBeGreaterThanOrEqual(lineStart);
+  });
+
+  it("emits data-line-start and data-line-end on heading elements (ADR-0040)", () => {
+    const { container } = render(
+      <MarkdownView
+        markdown={"# Title\n\n## Section\n\nContent.\n"}
+        docPath="docs/adr-0001-test.md"
+        navigate={navigate}
+      />
+    );
+    const h1 = container.querySelector("h1[data-line-start]") as HTMLElement | null;
+    const h2 = container.querySelector("h2[data-line-start]") as HTMLElement | null;
+    expect(h1).not.toBeNull();
+    expect(h2).not.toBeNull();
+    expect(parseInt(h1!.getAttribute("data-line-start") ?? "0", 10)).toBe(1);
+  });
+
+  it("emits data-line-start and data-line-end on pre (code block) elements (ADR-0040)", () => {
+    const { container } = render(
+      <MarkdownView
+        markdown={"# Title\n\n```ts\nconst x = 1;\n```\n"}
+        docPath="docs/adr-0001-test.md"
+        navigate={navigate}
+      />
+    );
+    const pre = container.querySelector("pre[data-line-start]") as HTMLElement | null;
+    expect(pre).not.toBeNull();
+    const lineStart = parseInt(pre!.getAttribute("data-line-start") ?? "0", 10);
+    expect(lineStart).toBeGreaterThan(0);
+  });
+
+  it("emits data-line-start on list items (ADR-0040)", () => {
+    const { container } = render(
+      <MarkdownView
+        markdown={"# Title\n\n- item one\n- item two\n"}
+        docPath="docs/adr-0001-test.md"
+        navigate={navigate}
+      />
+    );
+    const lis = container.querySelectorAll("li[data-line-start]");
+    expect(lis.length).toBeGreaterThan(0);
+  });
 });

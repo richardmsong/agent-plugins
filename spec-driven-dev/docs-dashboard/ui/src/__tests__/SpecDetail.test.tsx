@@ -7,9 +7,10 @@ import SpecDetail from "../routes/SpecDetail";
 vi.mock("../api", () => ({
   fetchDoc: vi.fn(),
   fetchLineage: vi.fn(),
+  fetchBlame: vi.fn(),
 }));
 
-import { fetchDoc, fetchLineage } from "../api";
+import { fetchDoc, fetchLineage, fetchBlame } from "../api";
 
 const mockDoc = {
   doc_path: "docs/spec-state-schema.md",
@@ -27,6 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   (fetchDoc as ReturnType<typeof vi.fn>).mockResolvedValue(mockDoc);
   (fetchLineage as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+  (fetchBlame as ReturnType<typeof vi.fn>).mockResolvedValue({ blocks: [], uncommitted_lines: [] });
 });
 
 describe("SpecDetail — H1 lineage icon (ADR-0031)", () => {
@@ -62,6 +64,29 @@ describe("SpecDetail — H1 lineage icon (ADR-0031)", () => {
     );
     await waitFor(() => {
       expect(container.textContent).toContain("spec");
+    });
+  });
+});
+
+describe("SpecDetail — BlameRangeFilter (ADR-0040)", () => {
+  it("renders the BlameRangeFilter dropdown", async () => {
+    const { container } = render(
+      <SpecDetail docPath="docs/spec-state-schema.md" navigate={navigate} lastEvent={null} />
+    );
+    await waitFor(() => {
+      expect(container.textContent).toContain("State Schema");
+    });
+    const select = container.querySelector("select");
+    expect(select).not.toBeNull();
+    expect(select!.textContent).toContain("All time");
+  });
+
+  it("calls fetchBlame on mount", async () => {
+    render(
+      <SpecDetail docPath="docs/spec-state-schema.md" navigate={navigate} lastEvent={null} />
+    );
+    await waitFor(() => {
+      expect(fetchBlame).toHaveBeenCalledWith("docs/spec-state-schema.md", undefined, undefined);
     });
   });
 });
