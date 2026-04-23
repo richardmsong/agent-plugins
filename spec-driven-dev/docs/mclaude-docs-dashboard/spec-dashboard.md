@@ -40,7 +40,7 @@ The dashboard must not reimplement parsing, indexing, lineage scanning, watching
 - `openDb` from `docs-mcp/db`
 - `indexAllDocs` from `docs-mcp/content-indexer`
 - `runLineageScan` from `docs-mcp/lineage-scanner`
-- `runBlameScan`, `blameFile` from `docs-mcp/blame-scanner`
+- `runBlameScan` from `docs-mcp/blame-scanner`
 - `startWatcher` from `docs-mcp/watcher`
 - `listDocs`, `readRawDoc`, `getLineage`, `searchDocs`, `NotFoundError` from `docs-mcp/tools`
 
@@ -152,7 +152,7 @@ GROUP BY MIN(section_a_doc,section_b_doc), MAX(section_a_doc,section_b_doc);
 
 ## LineagePopover (`ui/src/components/LineagePopover.tsx`)
 
-Collapses the `LineageResult[]` response from `/api/lineage` by `section_b_doc` before rendering (ADR-0030). One row per co-committed document. Aggregation: `count = SUM(commit_count)`, `last_commit = MAX` (proxy: row with highest `commit_count`; tie → first row). Sorted by collapsed `count` descending. Row click navigates to the doc top (`#/adr/<slug>` or `#/spec/<path>`) without `§heading` anchor. Final row: "Open graph centered here" → `#/graph?focus=<doc_path>&section=<heading>` (section-level) or `#/graph?focus=<doc_path>` (doc-level, ADR-0031).
+Collapses the `LineageResult[]` response from `/api/lineage` by `doc_path` before rendering (ADR-0030). One row per co-committed document. Aggregation: `count = SUM(commit_count)`, `last_commit = MAX` (proxy: row with highest `commit_count`; tie → first row). Sorted by collapsed `count` descending. Row click navigates to the doc top (`#/adr/<slug>` or `#/spec/<path>`) without `§heading` anchor. Final row: "Open graph centered here" → `#/graph?focus=<doc_path>&section=<heading>` (section-level) or `#/graph?focus=<doc_path>` (doc-level, ADR-0031).
 
 ### H1 lineage marker (ADR-0031)
 
@@ -172,9 +172,9 @@ Shows ADR lineage information for a rendered block on hover (ADR-0040). Displaye
 
 - **Trigger**: hover with ~300ms debounce. The hovered block gets a subtle background highlight (`rgba(99,179,237,0.08)`) as immediate feedback.
 - **Content**: lists the ADR(s) co-committed with the blame commit(s) for the block's source lines, each with title and status badge. Below, secondary info: author name, date, commit summary.
-- **Uncommitted lines**: if the block's source lines have no blame data (working copy / unstaged), the popover shows a "(working copy)" label with the containing section heading. It does not fetch section-level lineage rows — the label alone indicates the block is uncommitted.
+- **Uncommitted lines**: if the block's source lines have no blame data (working copy / unstaged), the popover shows a "(working copy)" label. It does not fetch section-level lineage rows — the label alone indicates the block is uncommitted.
 - **Pin/dismiss**: click pins the popover. Esc or outside-click unpins and dismisses. Same behavior as the existing `LineagePopover`.
-- **Inline diff**: in a pinned popover, each ADR/commit entry has an expand toggle. Clicking it fetches `GET /api/diff?doc=<p>&commit=<hash>&line_start=<n>&line_end=<n>` and renders the unified diff inline in the popover with syntax highlighting.
+- **Inline diff**: in a pinned popover, each ADR/commit entry has an expand toggle. Clicking it fetches `GET /api/diff?doc=<p>&commit=<hash>&line_start=<n>&line_end=<n>` and renders the unified diff inline in the popover as plain text in a `<pre>` block.
 
 ## BlameRangeFilter (`ui/src/components/BlameRangeFilter.tsx`)
 
@@ -211,9 +211,9 @@ The custom renderer also:
 | Failure | Behavior |
 |---------|----------|
 | `.git` not found walking up from cwd | Print error and exit non-zero. |
-| `.docs-index.db` missing or corrupt | `openDb` rebuilds; UI shows "Indexing…" until index returns. |
+| `.docs-index.db` missing or corrupt | `openDb` rebuilds; UI shows "Loading…" until index returns. |
 | Schema version mismatch | `openDb` deletes and rebuilds; same flow. |
-| `fs.watch` throws | Fall back to polling every 5 s; show "Live updates via polling" in footer. |
+| `fs.watch` throws | Fall back to polling every 5 s (handled in `docs-mcp/watcher.ts`). |
 | Port in use | Fail fast: `Error: port <n> is in use. Use --port <n> or stop the other process.` |
 | `/api/doc` or `/api/lineage` unknown path | HTTP 404, JSON `{error:"not found",path}`. |
 | FTS5 query syntax error | HTTP 400 with error message. |
