@@ -1,8 +1,9 @@
 # ADR: Vendor-neutral Agent Skills layout
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-22: accepted
+- 2026-04-23: implemented — file moves, symlinks, install.sh, setup skill rewrite committed
 
 ## Overview
 
