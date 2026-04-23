@@ -17,11 +17,6 @@ Safe to re-run — all steps are idempotent.
 /setup
 ```
 
-Or via the standalone installer (no Claude Code required):
-```bash
-/path/to/spec-driven-dev/install.sh [target-project-dir]
-```
-
 ---
 
 ## Prerequisites
