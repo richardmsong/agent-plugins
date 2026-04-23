@@ -1,8 +1,9 @@
 # ADR: Lineage edges restricted to ADR↔spec pairs
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-23: accepted — paired with spec-docs-mcp.md
+- 2026-04-23: implemented — isAdrFile filter + tests, spec gaps fixed
 
 ## Overview
 
