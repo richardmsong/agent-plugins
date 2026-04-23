@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Bash(git *)",
+      "Edit",
+      "Write",
+      "mcp__docs__*",
+      "mcp__spec-driven-dev_*",
+      "mcp__plugin_spec-driven-dev_docs__*"
+    ]
+  },
+  "enabledPlugins": {
+    "spec-driven-dev@richardmsong-plugins": true
+  }
+}
