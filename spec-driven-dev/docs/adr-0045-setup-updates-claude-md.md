@@ -1,8 +1,9 @@
 # ADR: Setup always updates CLAUDE.md and strengthens trigger language
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-23: accepted
+- 2026-04-23: implemented — all scope CLEAN
 
 ## Overview
 
