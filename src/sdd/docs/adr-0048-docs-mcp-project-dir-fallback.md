@@ -1,8 +1,9 @@
 # ADR: docs-mcp CLAUDE_PROJECT_DIR fallback and guard /feature-change messaging
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-23: accepted
+- 2026-04-23: implemented — all scope CLEAN
 
 ## Overview
 
