@@ -1,8 +1,9 @@
 # ADR: LineBlamePopover positioning fix
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-23: accepted
+- 2026-04-23: implemented — bounding rect anchor, 4px overlap, hover bridge dismiss timer in AdrDetail + SpecDetail
 
 ## Overview
 

@@ -39,6 +39,9 @@ export default function AdrDetail({ slug, navigate, lastEvent }: AdrDetailProps)
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const [hoveredBlockIndex, setHoveredBlockIndex] = useState<number | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Dismiss timer: started on block mouseleave, cancelled if the mouse enters the
+  // popover before it fires (hover bridge — ADR-0041).
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const docPath = slugToDocPath(slug);
 
@@ -131,7 +134,14 @@ export default function AdrDetail({ slug, navigate, lastEvent }: AdrDetailProps)
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setHoveredBlockIndex(null);
     if (!popover?.pinned) {
-      setPopover(null);
+      // Use a short delay instead of immediately dismissing. If the mouse enters
+      // the popover before the timer fires, handlePopoverMouseEnter cancels it
+      // (hover bridge — ADR-0041). 80ms is enough for the cursor to cross into
+      // the overlapping popover without feeling sluggish.
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = setTimeout(() => {
+        setPopover(null);
+      }, 80);
     }
   }, [popover]);
 
@@ -174,9 +184,10 @@ export default function AdrDetail({ slug, navigate, lastEvent }: AdrDetailProps)
   // Hover bridge: entering the popover keeps the block highlighted.
   // Leaving the popover (to empty space) dismisses if not pinned.
   const handlePopoverMouseEnter = useCallback(() => {
-    // Cancel any pending debounce — don't re-trigger popover from scratch
+    // Cancel any pending show-debounce — don't re-trigger popover from scratch
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    // hoveredBlockIndex is already set; nothing else needed
+    // Cancel any pending dismiss — the user moved from block → popover (ADR-0041).
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
   }, []);
 
   const handlePopoverMouseLeave = useCallback(() => {
