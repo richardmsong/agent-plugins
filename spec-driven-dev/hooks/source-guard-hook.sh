@@ -24,6 +24,19 @@ fi
 
 INPUT=$(cat)
 
+# Subagents have an agent_type field — let them through.
+HAS_AGENT_TYPE=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print('yes' if data.get('agent_type') else '')
+except:
+    print('')
+")
+if [ -n "$HAS_AGENT_TYPE" ]; then
+  exit 0
+fi
+
 SESSION_ID=$(echo "$INPUT" | python3 -c "
 import sys, json
 try:
