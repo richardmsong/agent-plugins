@@ -1,20 +1,15 @@
 #!/bin/bash
 # PreToolUse hook: blocks master sessions from editing source files.
 # Reads source_dirs patterns from $CLAUDE_PROJECT_DIR/.agent/master-config.json.
-# Supports multiple concurrent sdd-master sessions via .master-sessions registry.
 #
-# Registration flow (driven by sdd-master):
-#   - sdd-master creates an empty marker file and exports SDD_MARKER_FILE
-#   - First Edit/Write call: hook writes session_id to marker + .master-sessions
-#   - Subsequent calls: hook checks .master-sessions to decide allow/deny
-#   - On exit: sdd-master reads marker, removes session_id from .master-sessions
+# Sessions with an agent_type field are subagents — let them through unconditionally.
+# All other sessions (master) are checked against source_dirs patterns.
 #
 # Hook I/O contract:
-#   stdin:  JSON with session_id, tool_input.file_path
+#   stdin:  JSON with agent_type (optional), tool_input.file_path
 #   stdout: deny JSON (if blocked) or nothing (implicit allow)
 #   exit:   always 0
 
-MASTER_SESSIONS="${CLAUDE_PROJECT_DIR:-.}/.agent/.master-sessions"
 CONFIG_FILE="${CLAUDE_PROJECT_DIR:-.}/.agent/master-config.json"
 
 # No config = no restrictions.
@@ -34,30 +29,6 @@ except:
     print('')
 ")
 if [ -n "$HAS_AGENT_TYPE" ]; then
-  exit 0
-fi
-
-SESSION_ID=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    print(json.load(sys.stdin).get('session_id', ''))
-except:
-    print('')
-")
-
-if [ -z "$SESSION_ID" ]; then
-  exit 0
-fi
-
-# --- Registration: first call from an sdd-master session ---
-# SDD_MARKER_FILE is set by sdd-master. Empty marker = not yet registered.
-if [ -n "${SDD_MARKER_FILE:-}" ] && [ -f "$SDD_MARKER_FILE" ] && [ ! -s "$SDD_MARKER_FILE" ]; then
-  echo "$SESSION_ID" >> "$MASTER_SESSIONS"
-  printf '%s' "$SESSION_ID" > "$SDD_MARKER_FILE"
-fi
-
-# --- Guard: is this a registered master session? ---
-if ! grep -qF "$SESSION_ID" "$MASTER_SESSIONS" 2>/dev/null; then
   exit 0
 fi
 

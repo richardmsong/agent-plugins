@@ -121,36 +121,78 @@ else
   echo "  ✓ .agent/master-config.json already exists — skipping"
 fi
 
-# --- Step 6: Scaffold CLAUDE.md ---
-if [ ! -f "${TARGET}/CLAUDE.md" ]; then
-  cat > "${TARGET}/CLAUDE.md" << 'CMEOF'
+# --- Step 6: Upsert CLAUDE.md with marker-delimited SDD block ---
+SDD_BLOCK='<!-- sdd:begin -->
 # Project Rules
 
-## All changes — /feature-change first
+## Change detected → invoke /feature-change immediately
 
-**Never write implementation code directly for any app change.**
-Every change — feature, bug fix, refactor, config, UI tweak, backend change — goes through `/feature-change` first.
+When the user asks for **any change** — feature, bug fix, refactor, config, UI tweak, backend change — invoke `/feature-change` as your **first action**. Do not analyze the code first. Do not start implementing. Do not explore the codebase. Invoke the skill and let it handle discovery, classification, and implementation.
 
-The loop: `/feature-change` checks the spec → updates spec if needed → commits spec → calls dev-harness → implements and tests.
+**Never write implementation code directly.** The master session authors ADRs, updates specs, and orchestrates agents. All code changes go through dev-harness subagents invoked by `/feature-change`.
 
-For bug fixes where the spec is already correct, `/feature-change` skips the spec update and goes straight to dev-harness.
+Heuristic: if the user says "fix", "change", "update", "refactor", "remove", "add X to Y", "make X do Y", or describes any modification to how the system behaves → that'"'"'s `/feature-change`. Don'"'"'t ask permission; invoke the skill immediately.
+
+The loop: `/feature-change` reads specs → classifies → authors ADR → updates spec if needed → commits spec → calls dev-harness → implements and tests.
 
 ## New feature detected → invoke /plan-feature immediately
 
-When the user describes anything that looks like a potential new feature, jump straight into `/plan-feature` — don't wait for the full picture, don't rely on keeping it in memory.
+When the user describes anything that looks like a potential **new feature**, jump straight into `/plan-feature` — don'"'"'t wait for the full picture, don'"'"'t rely on keeping it in memory.
+
+Planning context is lost when you get compacted or switched out. The ADR on disk is the durable form. Start `/plan-feature` on the first mention, even mid-conversation, even if there are still open questions — drafts are first-class and can be paused, committed, and resumed.
+
+Heuristic: if the user says something like "maybe we should...", "what if...", "could we add...", "I want to...", or describes a capability the app doesn'"'"'t have yet → that'"'"'s `/plan-feature`. Don'"'"'t ask permission; just start the skill and let the Q&A surface the rest.
 
 ## Never edit source files directly
 
 The master session authors ADRs, updates specs, and orchestrates agents. It does **not** write production code, tests, config, or templates. All source file changes go through dev-harness subagents invoked by `/feature-change`.
 
+If tests fail, code is missing, or implementation is wrong — invoke dev-harness, don'"'"'t fix it yourself. If agents are failing (permissions, context limits), fix the agent infrastructure, not the source code.
+
 ## Parallelism — use subagents for independent work
 
 When requests can be parallelized, use subagents extensively rather than handling them sequentially.
-Launch multiple agents in a single message when their work is independent. Don't serialize tasks that can overlap.
-CMEOF
-  echo "  ✓ CLAUDE.md scaffolded — review and add project-specific rules"
+
+Launch multiple agents in a single message when their work is independent. Don'"'"'t serialize tasks that can overlap.
+<!-- sdd:end -->'
+
+CLAUDE_FILE="${TARGET}/CLAUDE.md"
+
+if [ ! -f "$CLAUDE_FILE" ]; then
+  printf '%s\n' "$SDD_BLOCK" > "$CLAUDE_FILE"
+  echo "  ✓ CLAUDE.md created with SDD workflow rules — add project-specific content after the sdd:end marker"
+elif ! grep -q '<!-- sdd:begin -->' "$CLAUDE_FILE"; then
+  # No markers present — prepend block above existing content
+  EXISTING=$(cat "$CLAUDE_FILE")
+  printf '%s\n\n%s\n' "$SDD_BLOCK" "$EXISTING" > "$CLAUDE_FILE"
+  echo "  ✓ CLAUDE.md updated — SDD workflow rules prepended, existing content preserved after sdd:end marker"
 else
-  echo "  ✓ CLAUDE.md already exists — skipping"
+  # Markers present — replace block in-place using Python (sed -i has portability issues)
+  python3 -c "
+import sys
+
+sdd_block = sys.argv[1]
+path = sys.argv[2]
+
+with open(path) as f:
+    content = f.read()
+
+begin = '<!-- sdd:begin -->'
+end = '<!-- sdd:end -->'
+
+start_idx = content.find(begin)
+end_idx = content.find(end)
+
+if start_idx == -1 or end_idx == -1:
+    sys.exit(1)
+
+end_idx += len(end)
+new_content = content[:start_idx] + sdd_block + content[end_idx:]
+
+with open(path, 'w') as f:
+    f.write(new_content)
+" "$SDD_BLOCK" "$CLAUDE_FILE"
+  echo "  ✓ CLAUDE.md updated — SDD workflow rules refreshed, project-specific content preserved"
 fi
 
 # --- Step 7: Bootstrap permissions ---
