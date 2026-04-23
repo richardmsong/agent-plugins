@@ -27,10 +27,10 @@ CONFIG=".agent/master-config.json"
 DISALLOWED_ARGS=()
 
 if [ -f "$CONFIG" ]; then
-  # Read each source_dirs entry and generate Edit(...) + Write(...) restrictions.
+  # Read each source_dirs entry and generate Edit/Update/Write restrictions.
   while IFS= read -r entry; do
     [ -z "$entry" ] && continue
-    DISALLOWED_ARGS+=("Edit(${entry})" "Write(${entry})")
+    DISALLOWED_ARGS+=("Edit(${entry})" "Update(${entry})" "Write(${entry})")
   done < <(python3 -c "
 import json, sys
 try:

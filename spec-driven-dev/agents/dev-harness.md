@@ -43,6 +43,12 @@ Also check for these common cross-cutting docs if they exist:
 
 ---
 
+## Permission Denials
+
+**NEVER modify `.claude/settings.json`, `.claude/settings.local.json`, or any settings/permissions file.** If an Edit or Write is denied, report the exact file path and tool that was blocked, then STOP. Do not attempt to fix permissions, add yourself to allowlists, or work around the denial. The master session will fix the permissions and re-invoke you.
+
+Do not spend ANY turns on permissions. Your job is to write production code and tests — nothing else.
+
 ## Spec Discipline
 
 - Implement exactly what the spec says. If behavior isn't in the spec, don't build it.

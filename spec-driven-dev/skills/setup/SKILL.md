@@ -148,6 +148,12 @@ Planning context is lost when you get compacted or switched out. The ADR on disk
 
 Heuristic: if the user says something like "maybe we should…", "what if…", "could we add…", "I want to…", or describes a capability the app doesn't have yet → that's `/plan-feature`. Don't ask permission; just start the skill and let the Q&A surface the rest.
 
+## Never edit source files directly
+
+The master session authors ADRs, updates specs, and orchestrates agents. It does **not** write production code, tests, config, or templates. All source file changes go through dev-harness subagents invoked by `/feature-change`.
+
+If tests fail, code is missing, or implementation is wrong — invoke dev-harness, don't fix it yourself. If agents are failing (permissions, context limits), fix the agent infrastructure, not the source code.
+
 ## Parallelism — use subagents for independent work
 
 When requests can be parallelized, use subagents extensively rather than handling them sequentially.
@@ -163,54 +169,27 @@ Tell the user: `"Review CLAUDE.md and add project-specific rules (component list
 
 ## Step 5 — Bootstrap default permissions
 
-Read or create `$CLAUDE_PROJECT_DIR/.claude/settings.json`. Merge the following `allowedTools` entries into the existing array (do not duplicate entries that already exist):
+Read or create `$CLAUDE_PROJECT_DIR/.claude/settings.json`. Merge the following `allow` entries into the existing array (do not duplicate entries that already exist):
 
 ```json
 {
   "permissions": {
-    "allowedTools": [
+    "allow": [
+      "Bash",
       "Edit",
       "Write",
-      "mcp__plugin_spec-driven-dev_docs__search_docs",
-      "mcp__plugin_spec-driven-dev_docs__get_section",
-      "mcp__plugin_spec-driven-dev_docs__get_lineage",
-      "mcp__plugin_spec-driven-dev_docs__list_docs",
-      "Bash(bun *)",
-      "Bash(bun test*)",
-      "Bash(bunx *)",
-      "Bash(git add*)",
-      "Bash(git commit*)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(git status*)",
-      "Bash(git stash*)",
-      "Bash(git checkout*)",
-      "Bash(git branch*)",
-      "Bash(git rev-parse*)",
-      "Bash(git ls-tree*)",
-      "Bash(git cat-file*)",
-      "Bash(git show*)",
-      "Bash(find *)",
-      "Bash(grep *)",
-      "Bash(ls *)",
-      "Bash(cat *)",
-      "Bash(wc *)",
-      "Bash(head *)",
-      "Bash(tail *)",
-      "Bash(mkdir *)",
-      "Bash(rm -rf /tmp/*)",
-      "Bash(curl -s *)"
+      "Update",
+      "mcp__plugin_spec-driven-dev_docs__*"
     ]
   }
 }
 ```
 
 These permissions are required for:
-- **Edit/Write**: dev-harness and spec-evaluator subagents run without supervision and cannot prompt for permission
-- **docs MCP tools**: read-only doc operations should never require approval
-- **Bash patterns**: test runners (bun test), git operations, and filesystem exploration are core to the workflow
+- **Bash/Edit/Write/Update**: dev-harness and spec-evaluator subagents run without supervision and cannot prompt for permission
+- **docs MCP tools**: all doc operations should be auto-approved
 
-If `.claude/settings.json` already exists with an `allowedTools` array, merge only entries that are not already present. Do not remove existing entries.
+If `.claude/settings.json` already exists with an `allow` array, merge only entries that are not already present. Do not remove existing entries.
 
 Print: `"Default permissions configured in .claude/settings.json"`
 
