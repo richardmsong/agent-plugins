@@ -1,5 +1,5 @@
 {
-  "description": "Config-driven command blocklist for spec-driven-dev workflow",
+  "description": "Hooks for spec-driven-dev workflow",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,6 +8,15 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/blocked-commands-hook.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/source-guard-hook.sh\""
           }
         ]
       }
