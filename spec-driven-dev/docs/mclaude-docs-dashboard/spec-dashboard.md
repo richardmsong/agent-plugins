@@ -14,7 +14,8 @@ Established by ADR-0027. Extended by ADR-0028 (bind `0.0.0.0`), ADR-0029 (`runLi
   2. `openDb(resolvedDbPath)` — opens the shared SQLite index in WAL mode; path defaults to `<repoRoot>/.agent/.docs-index.db`, overridden by `--db-path`.
   3. `indexAllDocs(db, resolvedDocsDir, repoRoot)` — populates the doc index.
   4. `runLineageScan(db, repoRoot)` — populates lineage from `git log` (ADR-0029).
-  5. `startWatcher(db, resolvedDocsDir, repoRoot, onReindex)` — watches `resolvedDocsDir` for changes; `onReindex` broadcasts SSE events.
+  5. `runBlameScan(db, repoRoot, resolvedDocsDir)` — populates `blame_lines` from `git blame` (ADR-0040). Non-fatal on error.
+  6. `startWatcher(db, resolvedDocsDir, repoRoot, onReindex)` — watches `resolvedDocsDir` for changes; `onReindex` broadcasts SSE events.
 - Default port `4567`; overridden by `--port <n>`.
 - Binds to `0.0.0.0` (all interfaces, ADR-0028) — reachable from Tailnet peers.
 - The startup banner prints:
@@ -39,6 +40,7 @@ The dashboard must not reimplement parsing, indexing, lineage scanning, watching
 - `openDb` from `docs-mcp/db`
 - `indexAllDocs` from `docs-mcp/content-indexer`
 - `runLineageScan` from `docs-mcp/lineage-scanner`
+- `runBlameScan`, `blameFile` from `docs-mcp/blame-scanner`
 - `startWatcher` from `docs-mcp/watcher`
 - `listDocs`, `readRawDoc`, `getLineage`, `searchDocs`, `NotFoundError` from `docs-mcp/tools`
 
@@ -162,7 +164,7 @@ Renders a VS Code-style blame gutter on the left margin of every spec and ADR de
 
 - Gutter is always visible when blame data is loaded.
 - Hovering a gutter annotation highlights the corresponding block(s) and opens the `LineBlamePopover`.
-- When a `BlameRangeFilter` is active, only blocks within the filtered range have gutter annotations; blocks outside the range show no annotation.
+- When a `BlameRangeFilter` is active, only blocks within the filtered range have gutter annotations; blocks outside the range show no annotation. This is achieved server-side: the `/api/blame` endpoint returns only matching blocks when `since` or `ref` params are provided, so the gutter naturally renders nothing for excluded lines.
 
 ## LineBlamePopover (`ui/src/components/LineBlamePopover.tsx`)
 
@@ -170,7 +172,7 @@ Shows ADR lineage information for a rendered block on hover (ADR-0040). Displaye
 
 - **Trigger**: hover with ~300ms debounce. The hovered block gets a subtle background highlight (`rgba(99,179,237,0.08)`) as immediate feedback.
 - **Content**: lists the ADR(s) co-committed with the blame commit(s) for the block's source lines, each with title and status badge. Below, secondary info: author name, date, commit summary.
-- **Uncommitted lines**: if the block's source lines have no blame data (working copy / unstaged), the popover shows section-level lineage with a "(working copy)" label.
+- **Uncommitted lines**: if the block's source lines have no blame data (working copy / unstaged), the popover shows a "(working copy)" label with the containing section heading. It does not fetch section-level lineage rows — the label alone indicates the block is uncommitted.
 - **Pin/dismiss**: click pins the popover. Esc or outside-click unpins and dismisses. Same behavior as the existing `LineagePopover`.
 - **Inline diff**: in a pinned popover, each ADR/commit entry has an expand toggle. Clicking it fetches `GET /api/diff?doc=<p>&commit=<hash>&line_start=<n>&line_end=<n>` and renders the unified diff inline in the popover with syntax highlighting.
 
