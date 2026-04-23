@@ -1,0 +1,10 @@
+{
+  "name": "agent-plugins",
+  "plugins": [
+    {
+      "name": "spec-driven-dev",
+      "source": "./droid/sdd",
+      "status": "stub"
+    }
+  ]
+}

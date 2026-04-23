@@ -1,16 +1,22 @@
-#!/bin/bash
-# PreToolUse hook: config-driven command blocklist.
+#!/usr/bin/env bash
+# Agent-neutral blocked-commands guard.
+# Interface: $1 = command string to check
+#            exit 0 = allow (no output)
+#            exit 1 = deny (reason on stderr)
+#
 # Reads rules from $CLAUDE_PROJECT_DIR/.agent/blocked-commands.json.
-# If the config file is absent, this hook is a no-op (project hasn't opted in).
+# If the config file is absent, this guard is a no-op (project hasn't opted in).
 #
 # Rule categories:
 #   ban   — always denied, no override
 #   guard — denied unless SDD_DEBUG=1 is set in the environment
-#
-# Hook I/O contract:
-#   stdin:  JSON with command at tool_input.command
-#   stdout: deny JSON (if blocked) or nothing (implicit allow)
-#   exit:   always 0
+
+COMMAND="$1"
+
+# No command to check — allow.
+if [ -z "$COMMAND" ]; then
+  exit 0
+fi
 
 CONFIG="${CLAUDE_PROJECT_DIR:-.}/.agent/blocked-commands.json"
 
@@ -18,34 +24,6 @@ CONFIG="${CLAUDE_PROJECT_DIR:-.}/.agent/blocked-commands.json"
 if [ ! -f "$CONFIG" ]; then
   exit 0
 fi
-
-# Extract the command string from stdin JSON.
-COMMAND=$(python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('tool_input', {}).get('command', ''))
-except:
-    print('')
-")
-
-# If no command to check, allow.
-if [ -z "$COMMAND" ]; then
-  exit 0
-fi
-
-deny() {
-  python3 -c "
-import json, sys
-print(json.dumps({
-  'hookSpecificOutput': {
-    'hookEventName': 'PreToolUse',
-    'permissionDecision': 'deny',
-    'permissionDecisionReason': sys.argv[1]
-  }
-}))" "$1"
-  exit 0
-}
 
 # Read rules from config and check each one.
 # Uses python3 to parse the JSON config and emit tab-separated fields
@@ -59,13 +37,15 @@ while IFS=$'\t' read -r category pattern message; do
   if echo "$COMMAND" | grep -qE "$anchored"; then
     case "$category" in
       ban)
-        deny "BLOCKED: ${message}"
+        echo "BLOCKED: ${message}" >&2
+        exit 1
         ;;
       guard)
         if [ "${SDD_DEBUG:-}" = "1" ]; then
           : # allow — debug override
         else
-          deny "BLOCKED: ${message}"
+          echo "BLOCKED: ${message}" >&2
+          exit 1
         fi
         ;;
     esac
