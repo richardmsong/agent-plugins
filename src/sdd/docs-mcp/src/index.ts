@@ -17,6 +17,7 @@ import {
   getLineage,
   listDocs,
 } from "./tools.js";
+import { resolveDocsRoot } from "./resolve-docs-root.js";
 
 // ---- Determine docs root and git root ----
 
@@ -58,8 +59,12 @@ function findGitRoot(startDir: string): string | null {
   }
 }
 
-// docsRoot: parent of docs/ — comes from --root or cwd fallback
-const docsRoot: string = parseRootArg() ?? process.cwd();
+// docsRoot: parent of docs/ — resolved via priority chain
+const docsRoot: string = resolveDocsRoot(
+  parseRootArg(),
+  process.env.CLAUDE_PROJECT_DIR,
+  process.cwd()
+);
 
 // gitRoot: actual git root discovered by walking up from docsRoot
 const gitRoot: string | null = findGitRoot(docsRoot);
