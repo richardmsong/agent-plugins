@@ -150,7 +150,9 @@ function handleSSE(): Response {
 
 // ---- Static file serving ----
 
-const UI_DIST = join(import.meta.dir, "../ui/dist");
+const UI_DIST = process.env.CLAUDE_PLUGIN_ROOT
+  ? join(process.env.CLAUDE_PLUGIN_ROOT, "dist/ui")
+  : join(import.meta.dir, "../ui/dist");
 
 function handleStatic(url: URL): Response | null {
   if (url.pathname.startsWith("/assets/")) {
@@ -183,24 +185,34 @@ async function main() {
   // Step 1: Resolve docsRoot via priority chain (ADR-0050)
   const docsRoot = resolveDocsRoot(root, process.env.CLAUDE_PROJECT_DIR, process.cwd());
 
-  // Step 3: Auto-build UI if dist/index.html is missing (before openDb per spec)
+  // Step 3: Auto-build UI if dist/index.html is missing (self-dev mode only).
+  // When CLAUDE_PLUGIN_ROOT is set (distributed install), the UI is pre-built at
+  // dist/ui/ by build.sh (ADR-0051); there is no docs-dashboard/ui/ source to build
+  // from, so the auto-build step is skipped entirely. If the pre-built UI is missing,
+  // log an error but continue — the SPA will return the fallback page.
   const indexHtml = join(UI_DIST, "index.html");
-  if (!existsSync(indexHtml)) {
-    console.log("[docs-dashboard] Building UI...");
-    try {
-      const buildProc = Bun.spawn(["bun", "run", "build"], {
-        cwd: join(import.meta.dir, "../ui"),
-        stdout: "inherit",
-        stderr: "inherit",
-      });
-      const exitCode = await buildProc.exited;
-      if (exitCode === 0) {
-        console.log("[docs-dashboard] UI built successfully");
-      } else {
-        console.error(`[docs-dashboard] UI build failed (exit ${exitCode}) — API still available, SPA will show fallback`);
+  if (!process.env.CLAUDE_PLUGIN_ROOT) {
+    if (!existsSync(indexHtml)) {
+      console.log("[docs-dashboard] Building UI...");
+      try {
+        const buildProc = Bun.spawn(["bun", "run", "build"], {
+          cwd: join(import.meta.dir, "../ui"),
+          stdout: "inherit",
+          stderr: "inherit",
+        });
+        const exitCode = await buildProc.exited;
+        if (exitCode === 0) {
+          console.log("[docs-dashboard] UI built successfully");
+        } else {
+          console.error(`[docs-dashboard] UI build failed (exit ${exitCode}) — API still available, SPA will show fallback`);
+        }
+      } catch (err) {
+        console.error(`[docs-dashboard] UI build error: ${err} — API still available, SPA will show fallback`);
       }
-    } catch (err) {
-      console.error(`[docs-dashboard] UI build error: ${err} — API still available, SPA will show fallback`);
+    }
+  } else {
+    if (!existsSync(indexHtml)) {
+      console.error("[docs-dashboard] Pre-built UI missing at dist/ui/ — SPA will show fallback. Re-run build.sh to fix.");
     }
   }
 
