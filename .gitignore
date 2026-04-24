@@ -1,4 +1,5 @@
 node_modules/
+bun.lock
 src/sdd/bin/
 *.db
 *.db-shm
