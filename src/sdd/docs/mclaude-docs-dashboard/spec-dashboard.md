@@ -11,11 +11,11 @@ Established by ADR-0027. Extended by ADR-0028 (bind `0.0.0.0`), ADR-0029 (`runLi
 - Bun (loads `.ts` files natively; no build step).
 - Entrypoint: `docs-dashboard/src/server.ts`. On boot:
   1. Resolve **docsRoot** via the same priority chain as docs-mcp (ADR-0050): `resolveDocsRoot(--root, CLAUDE_PROJECT_DIR, cwd)`. Import `resolveDocsRoot` from `docs-mcp/src/resolve-docs-root.ts`. The docs directory is `<docsRoot>/docs/`.
-  2. Discover **gitRoot** by calling `findGitRoot(docsRoot)` — walks up from docsRoot to find `.git`. If not found, lineage scanning is skipped.
-  3. Auto-build UI: if `ui/dist/index.html` does not exist, run `bun run build` in the `ui/` directory (ADR-0049). Log the build. On failure, log the error and continue — the API still works, and the SPA catch-all returns a build-failure fallback page.
+  2. Auto-build UI: if `ui/dist/index.html` does not exist, run `bun run build` in the `ui/` directory (ADR-0049). Log the build. On failure, log the error and continue — the API still works, and the SPA catch-all returns a build-failure fallback page.
+  3. Discover **gitRoot** by calling `findGitRoot(docsRoot)` — walks up from docsRoot to find `.git`. If not found, lineage and blame scanning are skipped; dashboard still serves docs.
   4. `openDb(resolvedDbPath)` — opens the shared SQLite index in WAL mode; path defaults to `<docsRoot>/.agent/.docs-index.db`, overridden by `--db-path`.
   5. `indexAllDocs(db, docsDir, gitRoot)` — populates the doc index.
-  6. `runLineageScan(db, gitRoot)` — populates lineage from `git log` (ADR-0029).
+  6. `runLineageScan(db, gitRoot, docsDir)` — populates lineage from `git log` (ADR-0029).
   7. `runBlameScan(db, gitRoot, docsDir)` — populates `blame_lines` from `git blame` (ADR-0040). Non-fatal on error.
   8. `startWatcher(db, docsDir, gitRoot, onReindex)` — watches docsDir for changes; `onReindex` broadcasts SSE events.
 - Default port `4567`; overridden by `--port <n>`.
@@ -212,7 +212,7 @@ The custom renderer also:
 
 | Failure | Behavior |
 |---------|----------|
-| `.git` not found walking up from cwd | Print error and exit non-zero. |
+| `.git` not found walking up from docsRoot | Log warning; lineage and blame scanning disabled. Dashboard still serves docs (ADR-0038). |
 | `.docs-index.db` missing or corrupt | `openDb` rebuilds; UI shows "Loading…" until index returns. |
 | Schema version mismatch | `openDb` deletes and rebuilds; same flow. |
 | `fs.watch` throws | Fall back to polling every 5 s (handled in `docs-mcp/watcher.ts`). |
