@@ -221,6 +221,8 @@ The invocation prompt gives the harness *priority*, not *scope*. The harness alw
 
 The dev-harness agent has `maxTurns=500` and is instructed to keep going until all gaps are closed. If it hits context limits and returns with gaps remaining, **re-invoke it immediately** with the remaining gap list. Each re-invocation picks up from the last commit and continues.
 
+**Waiting for agents:** Always launch dev-harness and evaluator agents with `run_in_background: true`. You will receive an automatic completion notification when they finish — **do not poll or monitor their progress**. No `grep`-ing output files, no `tail`-ing transcripts, no counting messages. Just launch the agent and wait for the notification. If you have independent work (e.g. a second component to evaluate), do that while waiting. Otherwise, tell the user what's running and stop until notified.
+
 ### Handling backpressure
 
 When dev-harness or implementation-evaluator reports a gap that is actually a spec or ADR problem (ambiguity, missing detail, contradiction), follow the rules from `/plan-feature`:
