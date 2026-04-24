@@ -1,9 +1,10 @@
 # ADR: Setup as interactive tutorial
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-24: draft
 - 2026-04-24: accepted — no spec updates (setup has no spec; deferred to docs/spec-setup.md)
+- 2026-04-24: implemented — all scope CLEAN (meta-process ADR: setup SKILL.md rewritten)
 
 ## Overview
 
