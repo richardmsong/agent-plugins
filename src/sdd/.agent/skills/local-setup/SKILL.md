@@ -38,42 +38,71 @@ Cannot find src/sdd/.agent/skills/ — are you in the plugin repo?
 ```
 1. Resolve REPO_ROOT
 2. Symlink skills and agents into .agent/
-3. Write spec-driven-config.json (if absent)
-4. Scaffold CLAUDE.md
-5. Bootstrap default permissions in .claude/settings.json
-6. Verify
+3. Install docs-mcp dependencies (bun install)
+4. Write project-local .mcp.json with --root src/sdd
+5. Write spec-driven-config.json (if absent)
+6. Scaffold CLAUDE.md
+7. Bootstrap default permissions in .claude/settings.json
+8. Verify
 ```
 
 ---
 
 ## Step 1 — Symlink skills and agents
 
-Create symlinks from the working tree into the repo root's `.agent/` directory. These override the plugin-provided skills/agents with the local working copy.
+`.agent/skills/` is the vendor-neutral path (Agent Skills standard). All skills live there. Claude Code discovers skills at `.claude/skills/`, so symlink it to `.agent/skills/`.
 
 ```bash
-# Shared skills (from canonical source)
-mkdir -p "${REPO_ROOT}/.agent/skills"
-for skill_dir in "${REPO_ROOT}/src/sdd/.agent/skills"/*/; do
-  name=$(basename "$skill_dir")
-  ln -sfn "${skill_dir}" "${REPO_ROOT}/.agent/skills/${name}"
-done
+# .agent/skills → canonical source
+ln -sfn "${REPO_ROOT}/src/sdd/.agent/skills" "${REPO_ROOT}/.agent/skills"
 
-# Setup skill (Claude-specific — from platform package)
-ln -sfn "${REPO_ROOT}/claude/sdd/skills/setup" "${REPO_ROOT}/.agent/skills/setup"
+# .claude/skills → .agent/skills (Claude Code discovery path)
+mkdir -p "${REPO_ROOT}/.claude"
+ln -sfn "${REPO_ROOT}/.agent/skills" "${REPO_ROOT}/.claude/skills"
 
 # Agents
-mkdir -p "${REPO_ROOT}/.agent/agents"
-for agent_file in "${REPO_ROOT}/src/sdd/.agent/agents"/*.md; do
-  name=$(basename "$agent_file")
-  ln -sfn "${agent_file}" "${REPO_ROOT}/.agent/agents/${name}"
-done
+ln -sfn "${REPO_ROOT}/src/sdd/.agent/agents" "${REPO_ROOT}/.agent/agents"
 ```
 
 Print the count: `"Symlinked N skills and M agents into .agent/"`
 
 ---
 
-## Step 2 — Write spec-driven-config.json
+## Step 2 — Install docs-mcp dependencies
+
+```bash
+cd "${REPO_ROOT}/src/sdd/docs-mcp" && bun install
+```
+
+Print: `"Installed docs-mcp dependencies"`
+
+---
+
+## Step 3 — Write project-local .mcp.json override
+
+This repo's `docs/` lives at `src/sdd/docs/`, not the project root. Write a project-level `.mcp.json` that passes `--root src/sdd` so docs-mcp finds the right directory.
+
+If `${REPO_ROOT}/.mcp.json` does not exist, create it:
+
+```json
+{
+  "docs": {
+    "command": "bun",
+    "args": [
+      "run",
+      "src/sdd/docs-mcp/src/index.ts",
+      "--root",
+      "src/sdd"
+    ]
+  }
+}
+```
+
+If the file already exists and already has a `docs` key, print: `".mcp.json already has docs config — skipping"`
+
+---
+
+## Step 4 — Write spec-driven-config.json
 
 If `${REPO_ROOT}/spec-driven-config.json` does not exist, create it:
 
@@ -99,7 +128,7 @@ If the file already exists, print: `"spec-driven-config.json already exists — 
 
 ---
 
-## Step 3 — Scaffold CLAUDE.md
+## Step 5 — Scaffold CLAUDE.md
 
 Inject or update the SDD workflow rules in `${REPO_ROOT}/CLAUDE.md` using marker-delimited content. The SDD section is wrapped in `<!-- sdd:begin -->` / `<!-- sdd:end -->` HTML comments.
 
@@ -112,7 +141,7 @@ Read the canonical workflow rules from `${REPO_ROOT}/src/sdd/context.md` and wra
 
 ---
 
-## Step 4 — Bootstrap default permissions
+## Step 6 — Bootstrap default permissions
 
 Read or create `${REPO_ROOT}/.claude/settings.json`. Merge the following `allow` entries into the existing array (do not duplicate):
 
@@ -132,7 +161,7 @@ Read or create `${REPO_ROOT}/.claude/settings.json`. Merge the following `allow`
 
 ---
 
-## Step 5 — Verify
+## Step 7 — Verify
 
 | Check | Command | Pass |
 |-------|---------|------|
