@@ -220,7 +220,8 @@ Joins `repoRoot + docPath`, verifies the resolved path remains inside `repoRoot`
   "./lineage-scanner": "./src/lineage-scanner.ts",
   "./blame-scanner": "./src/blame-scanner.ts",
   "./watcher": "./src/watcher.ts",
-  "./tools": "./src/tools.ts"
+  "./tools": "./src/tools.ts",
+  "./resolve-docs-root": "./src/resolve-docs-root.ts"
 }
 ```
 
