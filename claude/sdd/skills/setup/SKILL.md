@@ -47,11 +47,9 @@ TARGET=$(cd "$TARGET" && pwd)   # resolve to absolute path
 2. Write spec-driven-config.json (skips if exists)
 3. Scaffold CLAUDE.md
 4. Bootstrap default permissions
-5. Symlink sdd-master
-6. If first-time: print sdd-master explanation
-7. If first-time: read repo context, print contextual example
-8. If first-time: print skills overview
-9. Verify
+5. If first-time: read repo context, print contextual example
+6. If first-time: print skills overview
+7. Verify
 ```
 
 ---
@@ -186,51 +184,7 @@ Print: `"Default permissions configured in .claude/settings.json"`
 
 ---
 
-## Step 5 — Symlink sdd-master
-
-```bash
-mkdir -p ~/.local/bin
-ln -sf "${PLATFORM_ROOT}/bin/sdd-master" ~/.local/bin/sdd-master
-```
-
-Check if `~/.local/bin` is on PATH:
-```bash
-echo "$PATH" | tr ':' '\n' | grep -q "$HOME/.local/bin"
-```
-
-If not on PATH, warn the user:
-```
-~/.local/bin is not on your PATH. Add this to your shell profile:
-
-  export PATH="$HOME/.local/bin:$PATH"
-
-The sdd-master CLI shortcut won't work until PATH is updated.
-```
-
----
-
-## Step 6 — sdd-master explanation (first-time only)
-
-Skip this step if `is_first_time` is false.
-
-Print:
-
-```
-## sdd-master
-
-`sdd-master` is a CLI shortcut that starts a Claude session with the SDD
-workflow pre-loaded. Use it in any project where you've run /setup:
-
-  cd ~/my-project
-  sdd-master
-
-Tip: run /setup on every project you want to use SDD with. It's idempotent —
-safe to re-run whenever you update the plugin.
-```
-
----
-
-## Step 7 — Contextual example (first-time only)
+## Step 5 — Contextual example (first-time only)
 
 Skip this step if `is_first_time` is false.
 
@@ -279,7 +233,7 @@ What are you planning to build in this project?
 
 ---
 
-## Step 8 — Skills overview (first-time only)
+## Step 6 — Skills overview (first-time only)
 
 Skip this step if `is_first_time` is false.
 
@@ -305,7 +259,7 @@ The list above is illustrative. The actual list is discovered from the skill fil
 
 ---
 
-## Step 9 — Verify
+## Step 7 — Verify
 
 Run these checks and report results:
 
@@ -314,8 +268,6 @@ Run these checks and report results:
 | config | `test -f ${TARGET}/spec-driven-config.json` | Config present |
 | CLAUDE.md | `test -f ${TARGET}/CLAUDE.md` | Workflow rules present (with markers) |
 | permissions | `test -f ${TARGET}/.claude/settings.json` | Default permissions configured |
-| sdd-master symlink | `test -L ~/.local/bin/sdd-master` | Symlink in place |
-| sdd-master on PATH | `which sdd-master` | Callable from CLI |
 
 Report pass/fail for each. Any failure is non-fatal — the workflow still works for skills; only the failed capability is degraded.
 
