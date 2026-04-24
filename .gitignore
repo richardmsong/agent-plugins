@@ -1,7 +1,8 @@
 node_modules/
+src/sdd/bin/
 *.db
 *.db-shm
 *.db-wal
 .agent/.docs-index.db*
 .agent/audits/
-src/sdd/bin/docs-mcp
+.playwright-mcp

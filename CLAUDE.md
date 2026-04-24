@@ -1,17 +1,19 @@
+<!-- sdd:begin -->
 # Project Rules
 
-## All changes — /feature-change first
+## Change detected → invoke /feature-change immediately
 
-**Never write implementation code directly for any app change.**
-Every change — feature, bug fix, refactor, config, UI tweak, backend change — goes through `/feature-change` first.
+When the user asks for **any change** — feature, bug fix, refactor, config, UI tweak, backend change — invoke `/feature-change` as your **first action**. Do not analyze the code first. Do not start implementing. Do not explore the codebase. Invoke the skill and let it handle discovery, classification, and implementation.
 
-The loop: `/feature-change` checks the spec → updates spec if needed → commits spec → calls dev-harness → implements and tests.
+**Never write implementation code directly.** The master session authors ADRs, updates specs, and orchestrates agents. All code changes go through dev-harness subagents invoked by `/feature-change`.
 
-For bug fixes where the spec is already correct, `/feature-change` skips the spec update and goes straight to dev-harness.
+Heuristic: if the user says "fix", "change", "update", "refactor", "remove", "add X to Y", "make X do Y", or describes any modification to how the system behaves → that's `/feature-change`. Don't ask permission; invoke the skill immediately.
+
+The loop: `/feature-change` reads specs → classifies → authors ADR → updates spec if needed → commits spec → calls dev-harness → implements and tests.
 
 ## New feature detected → invoke /plan-feature immediately
 
-When the user describes anything that looks like a potential new feature, jump straight into `/plan-feature` — don't wait for the full picture, don't rely on keeping it in memory.
+When the user describes anything that looks like a potential **new feature**, jump straight into `/plan-feature` — don't wait for the full picture, don't rely on keeping it in memory.
 
 Planning context is lost when you get compacted or switched out. The ADR on disk is the durable form. Start `/plan-feature` on the first mention, even mid-conversation, even if there are still open questions — drafts are first-class and can be paused, committed, and resumed.
 
@@ -28,3 +30,4 @@ If tests fail, code is missing, or implementation is wrong — invoke dev-harnes
 When requests can be parallelized, use subagents extensively rather than handling them sequentially.
 
 Launch multiple agents in a single message when their work is independent. Don't serialize tasks that can overlap.
+<!-- sdd:end -->

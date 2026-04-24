@@ -4,7 +4,7 @@
 #            exit 0 = allow (no output)
 #            exit 1 = deny (reason on stderr)
 #
-# Reads rules from $CLAUDE_PROJECT_DIR/.agent/blocked-commands.json.
+# Reads blocked_commands from $CLAUDE_PROJECT_DIR/spec-driven-config.json.
 # If the config file is absent, this guard is a no-op (project hasn't opted in).
 #
 # Rule categories:
@@ -18,7 +18,7 @@ if [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-CONFIG="${CLAUDE_PROJECT_DIR:-.}/.agent/blocked-commands.json"
+CONFIG="${CLAUDE_PROJECT_DIR:-.}/spec-driven-config.json"
 
 # If no config file, exit silently — project hasn't opted in.
 if [ ! -f "$CONFIG" ]; then
@@ -55,14 +55,12 @@ import json, sys
 try:
     with open(sys.argv[1]) as f:
         config = json.load(f)
-    for rule in config.get('rules', []):
+    for rule in config.get('blocked_commands', []):
         cat = rule.get('category', 'ban')
         pat = rule.get('pattern', '')
         msg = rule.get('message', 'Command blocked by spec-driven-dev hook.')
-        # Tab-separated output for the shell loop
         print(f'{cat}\t{pat}\t{msg}')
 except Exception as e:
-    # If config is malformed, allow everything (don't break the session).
     print(f'# config parse error: {e}', file=sys.stderr)
 " "$CONFIG")
 

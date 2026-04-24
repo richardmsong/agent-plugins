@@ -1,0 +1,15 @@
+{
+  "source_dirs": ["**/src/**"],
+  "blocked_commands": [
+    {
+      "pattern": "gh\\s+run\\s+watch",
+      "message": "Blocks until timeout. Use 'gh run view {id}' to poll.",
+      "category": "ban"
+    },
+    {
+      "pattern": "git\\s+apply",
+      "message": "Bypasses the spec→dev-harness→evaluator loop. Use /feature-change.",
+      "category": "ban"
+    }
+  ]
+}
