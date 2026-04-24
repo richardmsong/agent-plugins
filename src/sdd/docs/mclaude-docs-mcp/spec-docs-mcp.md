@@ -8,7 +8,7 @@ Established by ADR-0015 (the v1 design), extended by ADR-0018 (status column + s
 
 ## Runtime
 
-- Bun (loads `.ts` files natively; no build step).
+- Bun (loads `.ts` files natively; no build step in self-dev mode). In distributed installs (plugin package), the MCP server runs from a pre-built JS bundle at `dist/docs-mcp.js` produced by `build.sh` (ADR-0051).
 - Single-process; stdio transport for MCP. No HTTP, no auth, no network.
 - Entrypoint: `docs-mcp/src/index.ts`. On boot: resolves the **docs root** (parent of `docs/`) via this priority chain: (1) `--root <dir>` CLI argument, (2) `CLAUDE_PROJECT_DIR` environment variable, (3) `process.cwd()`. If `--root` is a relative path, it is resolved against `CLAUDE_PROJECT_DIR` (if set) or `process.cwd()`. Separately discovers the **git root** by walking up from the docs root to find a `.git` directory (ADR-0038). Opens the SQLite DB at `<docsRoot>/.agent/.docs-index.db`. Passes `gitRoot` to `indexAllDocs` and `runLineageScan` so stored paths and git pathspecs are git-root-relative. If no `.git` is found, lineage scanning is skipped but content indexing proceeds using `docsRoot` as the path base. Starts `startWatcher` for the process lifetime; registers the four MCP tools. The docs directory is always `<docsRoot>/docs/`; `--docs-dir` is dashboard-only (ADR-0032).
 - The dashboard (`docs-dashboard`) uses the same `resolveDocsRoot` function and `--root` flag to resolve docsRoot identically (ADR-0050). Both components share the DB at `<docsRoot>/.agent/.docs-index.db`.

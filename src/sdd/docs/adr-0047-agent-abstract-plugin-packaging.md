@@ -6,6 +6,8 @@
 - 2026-04-23: accepted
 - 2026-04-23: implemented — all scope CLEAN
 
+> Partially superseded by ADR-0051 (plugin build step): the symlink packaging approach for `claude/sdd/` is replaced by a build step that produces real files. The `src/sdd/` canonical source structure and self-dev workflow are unchanged.
+
 ## Overview
 
 Restructure the plugin repository into three layers: (1) an agent-neutral canonical source in `src/sdd/` containing skills, agents, MCP servers, guard logic, and context rules; (2) per-platform package directories (`claude/sdd/`, `droid/sdd/`) with platform-specific metadata, setup skills, and symlinks back to the canonical source; and (3) per-marketplace distribution metadata at the repo root. Rename the repo from `claude-plugins` to `agent-plugins`.

@@ -8,10 +8,10 @@ Established by ADR-0027. Extended by ADR-0028 (bind `0.0.0.0`), ADR-0029 (`runLi
 
 ## Runtime
 
-- Bun (loads `.ts` files natively; no build step).
+- Bun (loads `.ts` files natively; no build step in self-dev mode). In distributed installs (plugin package), the dashboard server runs from a pre-built JS bundle at `dist/docs-dashboard.js` produced by `build.sh` (ADR-0051).
 - Entrypoint: `docs-dashboard/src/server.ts`. On boot:
   1. Resolve **docsRoot** via the same priority chain as docs-mcp (ADR-0050): `resolveDocsRoot(--root, CLAUDE_PROJECT_DIR, cwd)`. Import `resolveDocsRoot` from `docs-mcp/src/resolve-docs-root.ts`. The docs directory is `<docsRoot>/docs/`.
-  2. Auto-build UI: if `ui/dist/index.html` does not exist, run `bun run build` in the `ui/` directory (ADR-0049). Log the build. On failure, log the error and continue — the API still works, and the SPA catch-all returns a build-failure fallback page.
+  2. Auto-build UI: if `ui/dist/index.html` does not exist **and** `CLAUDE_PLUGIN_ROOT` is not set (self-dev mode), run `bun run build` in the `ui/` directory (ADR-0049). Log the build. On failure, log the error and continue — the API still works, and the SPA catch-all returns a build-failure fallback page. When `CLAUDE_PLUGIN_ROOT` is set (distributed install), the UI is pre-built at `dist/ui/` by `build.sh` (ADR-0051); the auto-build step is skipped.
   3. Discover **gitRoot** by calling `findGitRoot(docsRoot)` — walks up from docsRoot to find `.git`. If not found, lineage and blame scanning are skipped; dashboard still serves docs.
   4. `openDb(resolvedDbPath)` — opens the shared SQLite index in WAL mode; path defaults to `<docsRoot>/.agent/.docs-index.db`, overridden by `--db-path`.
   5. `indexAllDocs(db, docsDir, gitRoot)` — populates the doc index.
