@@ -73,6 +73,8 @@ The evaluator is a **separate agent** (`subagent_type="design-evaluator"`) — i
 
 The evaluator can also be spawned standalone (single-pass check without the fix loop) by any caller using `Agent(subagent_type="design-evaluator", ...)`.
 
+**Waiting:** Launch with `run_in_background: true`. You receive an automatic completion notification — **do not poll, grep, tail, or monitor the agent's output file**. Wait for the notification, then proceed to Step 4.
+
 ---
 
 ## Step 4 — Record findings in log
