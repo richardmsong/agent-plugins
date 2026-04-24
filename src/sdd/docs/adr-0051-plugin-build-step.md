@@ -1,9 +1,10 @@
 # ADR: Plugin build step — self-contained claude/sdd/ package
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-24: draft
 - 2026-04-24: accepted — paired with spec-docs-mcp.md, spec-dashboard.md, adr-0047 supersession note
+- 2026-04-24: implemented — all scope CLEAN (build.sh, server.ts, CI workflow, tests)
 
 ## Overview
 
