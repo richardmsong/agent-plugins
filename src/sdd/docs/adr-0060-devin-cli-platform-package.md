@@ -170,7 +170,7 @@ Add a Devin build target that:
 1. Copies skills (excluding `local-setup`) into `devin/sdd/skills/`
 2. Prepends a Devin-specific invocation preamble after the YAML frontmatter in each copied skill. The preamble maps Claude's `Agent(subagent_type="<name>")` to Devin's `run_subagent(profile="<name>", task="<prompt>", title="<label>", is_background=true)`. No marker needed in canonical source — Claude build copies skills verbatim (they already use Claude syntax).
 3. Translates skill frontmatter: `user_invocable: true` → adds `triggers: [user, model]` (Devin's equivalent)
-4. Copies agents (flat `.md` files) into `devin/sdd/agents/`, rewrites `model: claude-sonnet-4-6` → `model: sonnet`
+4. Copies agents into `devin/sdd/agents/<name>/AGENT.md` subdirectory format. Rewrites Claude frontmatter to Devin-native: `tools: "*"` → `allowed-tools` list, `maxTurns` → removed, `run_in_background` → removed, `model: claude-sonnet-4-6` → `model: sonnet`
 5. Copies guard scripts into `devin/sdd/hooks/guards/`
 6. Copies compiled `dist/` assets (docs-mcp.js, docs-dashboard.js, ui/)
 7. Copies `context.md`
