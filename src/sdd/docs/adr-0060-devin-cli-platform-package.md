@@ -24,9 +24,8 @@ Devin CLI also natively reads `.agents/` directories and `AGENTS.md`, and can im
 | Plugin root env var | Use `DEVIN_PROJECT_DIR` + relative paths from `$SCRIPT_DIR` | Devin CLI exposes `DEVIN_PROJECT_DIR` but has no `DEVIN_PLUGIN_ROOT` equivalent. Hook wrappers must use `$SCRIPT_DIR` for self-referencing. |
 | Context injection file | `AGENTS.md` | Devin CLI natively loads `AGENTS.md` from project root (same as Droid). No separate file needed. |
 | Hook registration format | `.devin/hooks.v1.json` or `hooks` key in `.devin/config.json` | Devin CLI supports both. `hooks.v1.json` is recommended as standalone. |
-| Hook output format | `{"decision": "approve", "reason": "..."}` with context injection for guards | **Critical platform constraint:** Both `block` and `deny` decisions kill the agent's turn on Devin — the agent goes silent and cannot recover or try alternatives without user intervention. This makes hard-blocking hooks incompatible with unattended operation. Guards must use `approve` + warning text in `reason` instead of `block`. Only truly catastrophic commands (e.g., `rm -rf /`) should use `block`/exit 2, accepting the turn-kill trade-off. |
-| Source-guard strategy | AGENTS.md rules + Devin's native permission system (no hook blocking) | Hook-based source guarding is impractical on Devin due to the turn-kill constraint above. Primary enforcement: (1) AGENTS.md rules tell the master session "never edit source files directly", (2) Devin's granular permission system can set `"edit": {"src/**": "ask"}` to require user confirmation. The source-guard hook wrapper uses `approve` + warning reason as a soft reminder, not a hard block. |
-| Blocked-commands strategy | Soft warn via `approve` + reason for most; hard `block` only for destructive commands | Most banned commands (e.g., `git apply`) use `{"decision": "approve", "reason": "WARNING: ..."}` so the agent sees the warning and can choose not to proceed. Hard `block` reserved for commands where executing is worse than killing the turn (e.g., destructive filesystem operations). |
+| Hook output format | Exit 0 + `{"decision": "block", "reason": "..."}` on stdout | Wrappers use exit 0 + JSON block. Guard scripts exit 1 on deny, so wrappers translate exit 1 → exit 0 + JSON block. |
+| Hook turn-kill limitation | **Known platform limitation** — `block` and `deny` both kill the agent's turn | On Devin, a blocked tool call terminates the agent's turn — it goes silent and cannot recover or try alternatives without user intervention. This does NOT change the hook strategy: blocked actions must stay blocked. A dead turn is better than a corrupted source file or a bypassed workflow. This is a Devin platform gap that should be filed upstream. |
 | Hook tool matchers | `exec` for commands, `edit\|write` for file operations | Devin CLI tool names (lowercase). |
 | MCP config location | `.devin/config.json` under `mcpServers` key | Devin CLI reads MCP servers from config files, not a separate `.mcp.json`. |
 | Agent file format | Flat `.md` files via `.claude/agents/` import | Devin natively imports `.claude/agents/*.md` flat files (documented in subagents.mdx). No format adaptation needed. The build step copies agents into this path. |
@@ -147,10 +146,8 @@ devin/sdd/
 **Hook wrappers** translate Devin's JSON stdin/stdout to the agent-neutral guard script contract:
 - Bridge `DEVIN_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` (guards read the latter)
 - Parse Devin's JSON to extract `tool_input.command` (blocked-commands) or `tool_input.file_path` (source-guard)
-- **Critical:** Both `block` and `deny` decisions kill the agent's turn on Devin (agent goes silent, cannot recover without user nudge). Therefore:
-  - **Source-guard wrapper** returns `{"decision": "approve", "reason": "WARNING: <text>"}` — soft enforcement. The agent sees the warning and is expected to respect it. Hard blocking would break unattended operation.
-  - **Blocked-commands wrapper** returns `{"decision": "approve", "reason": "WARNING: <text>"}` for most banned commands (soft warn). Uses `{"decision": "block"}` only for truly destructive commands where execution is worse than killing the turn.
-- Guard scripts exit 1 on deny; wrappers translate exit 1 → exit 0 + JSON approve-with-warning (not block)
+- Guard scripts exit 1 on deny; wrappers translate exit 1 → exit 0 + `{"decision": "block", "reason": "<text>"}`
+- **Known Devin platform issue:** Both `block` and `deny` kill the agent's turn — it goes silent and requires user intervention to continue. This is a Devin CLI bug/limitation to raise with the Devin team. The correct behavior (as Claude Code does) is to let the agent see the block reason and continue its turn with an alternative approach. Despite this limitation, hooks still use `block` — a dead turn is better than letting a guarded action through.
 - **workflow-reminder wrapper** wraps guard stdout in `{"add_context": "<text>"}` (Devin's context injection format, unlike Claude's plain-text stdout)
 
 ### `src/sdd/build.sh` (MODIFIED)
@@ -192,8 +189,8 @@ No new data model changes. The plugin reuses:
 |----------|----------|
 | `bun` not installed | Setup skill detects and instructs user to install Bun |
 | MCP server fails to start | Setup skill validates config; Devin CLI shows MCP connection error |
-| Hook script fails (exit 1) | Devin CLI treats exit 1 as error (logged, doesn't block). Wrappers translate guard's exit 1 → exit 0 + JSON approve-with-warning (soft enforcement). If wrapper itself errors, Devin default-allows. |
-| Hook returns `block` or `deny` | **Agent's turn is killed** — agent goes silent, requires user intervention to continue. Wrappers avoid this by using `approve` + warning for guards. Only used for truly destructive commands. |
+| Hook script fails (exit 1) | Devin CLI treats exit 1 as error (logged, doesn't block). Wrappers translate guard's exit 1 → exit 0 + JSON block. If wrapper itself errors, Devin default-allows. |
+| Hook returns `block` or `deny` | **Devin platform issue:** agent's turn is killed — goes silent, requires user intervention. Filed as upstream issue. Hooks still use `block` because letting guarded actions through is worse. |
 | Guard script missing config | Guard scripts exit 0 (no-op) when `spec-driven-config.json` absent |
 | Agent model not recognized | Build step rewrites `model: claude-sonnet-4-6` to `model: sonnet` for Devin agents |
 | Subagent tries to spawn sub-subagent | Non-issue — SDD workflow doesn't nest. Devin denies the tool but no SDD agent attempts this. |

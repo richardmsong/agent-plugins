@@ -24,7 +24,7 @@ if [ $RC -ne 0 ]; then
   python3 -c "
 import json, sys
 reason = sys.stdin.read().strip()
-print(json.dumps({'decision': 'deny', 'reason': reason}))
+print(json.dumps({'decision': 'block', 'reason': reason}))
 " <<< "$REASON"
   exit 0
 fi
