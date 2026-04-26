@@ -1,9 +1,10 @@
 # ADR: Droid platform package — full implementation
 
-**Status**: implemented
+**Status**: draft
 **Status history**:
 - 2026-04-25: accepted
 - 2026-04-25: implemented — all scope CLEAN
+- 2026-04-26: reverted to draft — dev-harness subagent does not work in Droid environment; blocking issues documented below
 
 ## Overview
 
@@ -64,3 +65,28 @@ The stub was insufficient: Droid sessions in this repo had no SDD workflow rules
 - Droid plugin MCP config (`mcp.json` at plugin root) — docs-mcp binary needs testing with Droid's MCP discovery
 - Droid-specific tutorial content in setup (currently mirrors Claude's tutorial structure)
 - Hook for enforcing ADR-before-edit workflow (PreToolUse gate that blocks Edit|Create if no ADR exists in session)
+
+## Blocking Issues (as of 2026-04-26)
+
+These issues were discovered when attempting to run the `/feature-change` → dev-harness loop inside a Droid session. The ADR is reverted to `draft` until they are resolved.
+
+### 1. dev-harness subagent runs in a tool-restricted "exec mode"
+
+When the master session invokes the `dev-harness` droid via the `Task` tool, the subagent receives no file I/O or shell execution tools. It reported attempting `Read`, `Glob`, `Execute`, and equivalents — all returned `"Tool not permitted in exec mode"`. The droid config has `tools: "*"` so the restriction is not from the droid definition itself.
+
+**Suspected cause:** The dev-harness droid sets `run_in_background: true`. When the `Task` tool spawns a subagent from a droid with that flag, Droid may route it through a restricted execution context that strips tool access. `run_in_background: true` in a droid definition is intended for droids launched directly by the user, not ones spawned as subagents via `Task`.
+
+**Impact:** The `/feature-change` skill's Step 6 loop (dev-harness → implementation-evaluator → repeat until CLEAN) is completely non-functional in Droid sessions. No implementation code can be written through the standard SDD workflow.
+
+**Resolution needed:** Either:
+- Remove `run_in_background: true` from the dev-harness droid definition and verify that `Task`-spawned subagents receive full tool access, or
+- Document that `run_in_background: true` is incompatible with `Task` subagent spawning and fix the platform behavior, or
+- Replace the `Task`-based invocation with a different mechanism Droid supports for spawning code-writing subagents.
+
+### 2. `/feature-change` skill assumes Claude Code tool names
+
+The `/feature-change` SKILL.md and dev-harness agent reference Claude Code tool names (`Bash`, `Edit`, `Write`, `Read`) in their hook matchers and instructions. The Droid equivalents (`Execute`, `Edit`, `Create`) differ. The source-guard hook in this ADR already bridges this (translating `Edit|Create` → `Edit|Write`) but the agent instructions themselves have not been audited for tool-name drift.
+
+**Impact:** Even if tool access is restored, the dev-harness agent may fail to use Droid-native tools correctly or may reference Claude-specific patterns that don't translate.
+
+**Resolution needed:** Audit dev-harness agent instructions (`src/sdd/.agent/agents/dev-harness.md`) for Claude-specific tool name references and add Droid equivalents.

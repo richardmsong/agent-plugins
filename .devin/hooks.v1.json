@@ -1,0 +1,24 @@
+{
+  "PreToolUse": [
+    {
+      "matcher": "exec",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash .devin/hooks/blocked-commands-hook.sh",
+          "timeout": 10
+        }
+      ]
+    },
+    {
+      "matcher": "edit|write",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash .devin/hooks/source-guard-hook.sh",
+          "timeout": 10
+        }
+      ]
+    }
+  ]
+}
