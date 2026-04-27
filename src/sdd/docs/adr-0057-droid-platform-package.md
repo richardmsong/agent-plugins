@@ -83,6 +83,30 @@ When the master session invokes the `dev-harness` droid via the `Task` tool, the
 - Document that `run_in_background: true` is incompatible with `Task` subagent spawning and fix the platform behavior, or
 - Replace the `Task`-based invocation with a different mechanism Droid supports for spawning code-writing subagents.
 
+### 3. No `subagent_type` in PreToolUse hook input — source-guard blocks subagents
+
+The source-guard hook (`droid/sdd/hooks/source-guard-hook.sh`) checks for a `subagent_type` or `agent_type` field in the hook stdin to identify subagent calls and let them through unconditionally. Empirically tested (2026-04-26): when the master session spawns a `worker` subagent via `Task` and the subagent attempts to `Create` a file under a `source_dirs` path, the full hook stdin is:
+
+```json
+{
+  "session_id": "84ca6aa9-...",
+  "cwd": "/Users/rsong/work/agent-plugins",
+  "permission_mode": "auto-high",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Create",
+  "tool_input": { "file_path": "...", "content": "..." }
+}
+```
+
+No `subagent_type`, no `agent_type`. The bypass check never fires. The subagent is blocked by the source-guard with `"master session cannot edit ..."`, identical to how the master session itself would be blocked. This is the same gap as noted in ADR-0060 §3 for Devin.
+
+**Impact:** dev-harness subagents (when tool-access issues in Issue #1 are resolved) will be blocked from writing any file under `source_dirs`. The guard that is supposed to protect source files from the *master session* ends up blocking the *subagents* that are the intended writers.
+
+**Resolution needed:** Either:
+- Droid injects a field (e.g. `subagent_type`, `agent_type`, or `is_subagent`) into PreToolUse stdin for subagent-spawned tool calls, allowing the hook to distinguish them; or
+- The source-guard is replaced with a different enforcement mechanism (e.g. checking `permission_mode` or session ID against a known master-session ID written at SessionStart); or
+- Source-guard enforcement is dropped for Droid entirely and enforced solely via AGENTS.md rules (weaker, relies on model compliance).
+
 ### 2. `/feature-change` skill assumes Claude Code tool names
 
 The `/feature-change` SKILL.md and dev-harness agent reference Claude Code tool names (`Bash`, `Edit`, `Write`, `Read`) in their hook matchers and instructions. The Droid equivalents (`Execute`, `Edit`, `Create`) differ. The source-guard hook in this ADR already bridges this (translating `Edit|Create` → `Edit|Write`) but the agent instructions themselves have not been audited for tool-name drift.
