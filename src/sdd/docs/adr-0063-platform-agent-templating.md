@@ -1,9 +1,10 @@
 # ADR: Platform-Specific Agent Frontmatter Templating
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-27: draft
 - 2026-04-27: accepted — paired with spec-agents.md
+- 2026-04-27: implemented — all scope CLEAN (validation requires session restart)
 
 ## Overview
 
