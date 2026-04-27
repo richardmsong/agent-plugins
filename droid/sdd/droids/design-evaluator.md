@@ -1,8 +1,11 @@
 ---
 name: design-evaluator
-description: Fresh-context design document evaluator. Reads only the design doc and codebase, reports ambiguities and blocking gaps. No conversation context inherited. Saves results to .agent/audits/.
-model: claude-sonnet-4-6
-tools: Read, Glob, Grep, Write, Bash, Agent
+description: >-
+  Fresh-context design document evaluator. Reads only the design doc and codebase,
+  reports ambiguities and blocking gaps. No conversation context inherited.
+  Saves results to .agent/audits/.
+model: inherit
+tools: ["Read", "LS", "Grep", "Glob", "Create", "Edit", "Execute", "Task"]
 ---
 
 # Design Evaluator

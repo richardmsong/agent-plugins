@@ -82,7 +82,7 @@ Print: `"Claude Code: .claude/skills/ → .agent/skills/"`
 
 ## Step 3 — Symlink Droid discovery paths
 
-Droid discovers skills at `.factory/skills/` and droids (subagents) at `.factory/droids/`. Point skills at `droid/sdd/skills/` (the Droid platform package, which includes the platform-specific `setup` skill plus symlinks to shared skills). Point droids at the shared agents source.
+Droid discovers skills at `.factory/skills/` and droids (subagents) at `.factory/droids/`. Point skills at `droid/sdd/skills/` (the Droid platform package, which includes the platform-specific `setup` skill plus symlinks to shared skills). Point droids at `droid/sdd/droids/` (build output with Droid-native frontmatter, per ADR-0063).
 
 ```bash
 mkdir -p "${REPO_ROOT}/.factory"
@@ -90,11 +90,11 @@ mkdir -p "${REPO_ROOT}/.factory"
 # Skills: use droid/sdd/skills/ so the platform-specific setup skill is included
 ln -sfn "${REPO_ROOT}/droid/sdd/skills" "${REPO_ROOT}/.factory/skills"
 
-# Droids: shared agents work across both platforms
-ln -sfn "${REPO_ROOT}/src/sdd/.agent/agents" "${REPO_ROOT}/.factory/droids"
+# Droids: use droid/sdd/droids/ (build output with Droid-native frontmatter)
+ln -sfn "${REPO_ROOT}/droid/sdd/droids" "${REPO_ROOT}/.factory/droids"
 ```
 
-Print: `"Droid: .factory/skills/ → droid/sdd/skills/, .factory/droids/ → src/sdd/.agent/agents/"`
+Print: `"Droid: .factory/skills/ → droid/sdd/skills/, .factory/droids/ → droid/sdd/droids/"`
 
 ---
 

@@ -136,6 +136,47 @@ echo "Copying agents..."
 rm -rf "$OUT/agents"
 cp -R "$SRC/.agent/agents" "$OUT/agents"
 
+# 8b. Template agents for non-Claude platforms (ADR-0063)
+# For each platform with .agent-templates/, strip Claude frontmatter from canonical
+# agents and replace with platform-native frontmatter.
+echo "Templating platform agents..."
+for platform_dir in "$REPO_ROOT"/*/sdd; do
+  templates="$platform_dir/.agent-templates"
+  [ -d "$templates" ] || continue
+
+  platform=$(basename "$(dirname "$platform_dir")")
+  out_droids="$platform_dir/droids"
+  rm -rf "$out_droids"
+  mkdir -p "$out_droids"
+
+  for canonical in "$SRC/.agent/agents"/*.md; do
+    agent_name=$(basename "$canonical" .md)
+    template="$templates/${agent_name}.yaml"
+
+    if [ ! -f "$template" ]; then
+      echo "FATAL: missing template $template for agent $agent_name on platform $platform"
+      exit 1
+    fi
+
+    # Extract body: everything after the closing --- of YAML frontmatter
+    body=$(awk '/^---$/{n++; if(n==2){p=1; next}} p' "$canonical")
+    if [ -z "$body" ]; then
+      echo "FATAL: agent $agent_name has no body after frontmatter stripping"
+      exit 1
+    fi
+
+    # Write: platform frontmatter + body
+    {
+      echo "---"
+      cat "$template"
+      echo "---"
+      echo "$body"
+    } > "$out_droids/${agent_name}.md"
+
+    echo "  $platform/$agent_name.md"
+  done
+done
+
 # 9. Copy guard scripts
 echo "Copying guards..."
 mkdir -p "$OUT/hooks/guards"
