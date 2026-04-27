@@ -4,7 +4,6 @@ description: Implementation loop for any project component. Reads ADRs + specs, 
 model: claude-sonnet-4-6
 maxTurns: 500
 tools: "*"
-run_in_background: true
 ---
 
 # Dev Harness
