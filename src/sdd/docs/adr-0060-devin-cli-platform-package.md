@@ -42,7 +42,7 @@ Devin CLI also natively reads `.agents/` directories and `AGENTS.md`, and can im
 | Hook turn-kill limitation | **Known platform limitation** — `block` and `deny` both kill the agent's turn | On Devin, a blocked tool call terminates the agent's turn — it goes silent and cannot recover or try alternatives without user intervention. This does NOT change the hook strategy: blocked actions must stay blocked. A dead turn is better than a corrupted source file or a bypassed workflow. This is a Devin platform gap that should be filed upstream. |
 | Hook tool matchers | `exec` for blocked-commands only | No `edit\|write` matcher — source-guard hook removed (see limitation #3). |
 | MCP config location | `.devin/config.json` under `mcpServers` key | Devin CLI reads MCP servers from config files, not a separate `.mcp.json`. |
-| Agent file format | Flat `.md` files via `.claude/agents/` import | Devin natively imports `.claude/agents/*.md` flat files (documented in subagents.mdx). No format adaptation needed. The build step copies agents into this path. |
+| Agent file format | Flat `.md` files via `.claude/agents/` import, frontmatter rewritten by build | Devin imports `.claude/agents/*.md` flat files. Build step rewrites Claude frontmatter to Devin-compatible: `tools: "*"` → removed (Devin defaults to all), `tools` with restricted list → `allowed-tools: [read, grep, glob, edit, exec]` (Devin tool names), `maxTurns`/`run_in_background` → removed, `model` → short name. |
 | Model slugs | Use short names (`sonnet`) for Devin agents; full identifiers for Claude/Droid | Devin docs only show short names (`sonnet`, `opus`, etc.). ADR-0058's `claude-sonnet-4-6` may not resolve. Build step rewrites `model:` field for Devin agents. |
 | Subagent nesting | Not supported in Devin, but non-issue | Devin docs: "Subagents cannot spawn their own subagents." However, the SDD workflow already has the master session drive the dev-harness → evaluator loop. No nesting occurs. |
 | Permissions bootstrap | `.devin/config.json` with `permissions.allow` array | Devin uses scope-based permissions: `Read(glob)`, `Write(glob)`, `Exec(prefix)`, `mcp__*`. |
@@ -61,7 +61,8 @@ Devin CLI also natively reads `.agents/` directories and `AGENTS.md`, and can im
 4. Copy `devin/sdd/hooks/*.sh` into `.devin/hooks/` and `devin/sdd/hooks/guards/` into `.devin/hooks/guards/`
 5. Copy `devin/sdd/hooks.v1.json` to `.devin/hooks.v1.json` (top-level in `.devin/`, not a subdirectory)
 6. Copy `devin/sdd/dist/` into `.devin/dist/`
-7. Run `/setup` in a Devin CLI session to scaffold `AGENTS.md`, `spec-driven-config.json`, MCP config, and permissions
+7. Copy `devin/sdd/context.md` to `.devin/context.md` (setup skill reads this for AGENTS.md scaffolding)
+8. Run `/setup` in a Devin CLI session to scaffold `AGENTS.md`, `spec-driven-config.json`, MCP config, and permissions
 
 ### First run (after installation)
 
@@ -78,7 +79,7 @@ Devin CLI also natively reads `.agents/` directories and `AGENTS.md`, and can im
      ]
    }
    ```
-5. **Upsert `AGENTS.md`** — read `context.md` from the installed package. If `AGENTS.md` exists, replace content between `<!-- sdd:begin -->` and `<!-- sdd:end -->` markers (preserve user content outside markers). If absent, create with markers wrapping the context content.
+5. **Upsert `AGENTS.md`** — read `${TARGET}/.devin/context.md` (copied during installation). If `AGENTS.md` exists, replace content between `<!-- sdd:begin -->` and `<!-- sdd:end -->` markers (preserve user content outside markers). If absent, create with markers wrapping the context content.
 6. **Write `.devin/config.json`** (merge with existing if present):
    ```json
    {
