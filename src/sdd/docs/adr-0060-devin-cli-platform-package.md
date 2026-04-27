@@ -67,7 +67,8 @@ Devin CLI also natively reads `.agents/` directories and `AGENTS.md`, and can im
 
 1. User invokes `/setup` in a Devin CLI session
 2. **Path resolution:** `TARGET="${DEVIN_PROJECT_DIR:-.}"` (project root). No plugin root var — all paths relative to `$TARGET`.
-3. **Write `spec-driven-config.json`** (if absent):
+3. **First-time detection:** Check for `${TARGET}/spec-driven-config.json`. If absent, this is first run — set `is_first_time=true` (display tutorial at end).
+4. **Write `spec-driven-config.json`** (if absent):
    ```json
    {
      "source_dirs": ["src/**", "lib/**", "packages/**"],
@@ -93,7 +94,7 @@ Devin CLI also natively reads `.agents/` directories and `AGENTS.md`, and can im
      }
    }
    ```
-6. **First-time detection:** Check for `.agent/master-config.json`. If absent, this is first run — display the SDD tutorial (explains workflow, available skills, how `/feature-change` works).
+6. **Tutorial:** If `is_first_time`, display the SDD tutorial (explains workflow, available skills, how `/feature-change` works).
 7. **Verify:** Confirm `spec-driven-config.json`, `AGENTS.md`, `.devin/config.json`, `.devin/hooks.v1.json`, `.devin/dist/docs-mcp.js` all exist.
 
 ### Development workflow (after setup)
@@ -102,8 +103,9 @@ User says "add feature X" → Devin CLI loads `AGENTS.md` → routes to `/featur
 
 Hooks fire on every tool use:
 - `exec` → `blocked-commands-hook.sh` → checks against `spec-driven-config.json`
-- `edit|write` → `source-guard-hook.sh` → prevents direct source edits by master session
 - `UserPromptSubmit` → `workflow-reminder-hook.sh` → reminds agent of SDD workflow
+
+Note: **no source-guard hook on Devin** — without `agent_type` in hook input, it cannot distinguish master from subagent edits. Source protection relies on AGENTS.md rules and Devin's per-agent permission system.
 
 ## Component Changes
 
@@ -115,20 +117,19 @@ devin/sdd/
 ├── skills/
 │   ├── setup/
 │   │   └── SKILL.md                   # Devin-specific setup (real file)
-│   ├── feature-change/                # symlink → src/sdd/.agent/skills/feature-change
-│   ├── plan-feature/                  # symlink → src/sdd/.agent/skills/plan-feature
-│   ├── design-audit/                  # symlink → src/sdd/.agent/skills/design-audit
-│   ├── spec-evaluator/                # symlink → src/sdd/.agent/skills/spec-evaluator
-│   ├── implementation-evaluator/      # symlink → src/sdd/.agent/skills/implementation-evaluator
-│   ├── file-bug/                      # symlink → src/sdd/.agent/skills/file-bug
-│   └── dashboard/                     # symlink → src/sdd/.agent/skills/dashboard
+│   ├── feature-change/                # copied from src/sdd/.agent/skills/feature-change
+│   ├── plan-feature/                  # copied from src/sdd/.agent/skills/plan-feature
+│   ├── design-audit/                  # copied from src/sdd/.agent/skills/design-audit
+│   ├── spec-evaluator/                # copied from src/sdd/.agent/skills/spec-evaluator
+│   ├── implementation-evaluator/      # copied from src/sdd/.agent/skills/implementation-evaluator
+│   ├── file-bug/                      # copied from src/sdd/.agent/skills/file-bug
+│   └── dashboard/                     # copied from src/sdd/.agent/skills/dashboard
 ├── agents/                            # Flat .md files (Devin imports from .claude/agents/); installed to target's .claude/agents/
 ├── hooks.v1.json                      # Devin hook registration (flat schema, lives at .devin/ root)
 ├── hooks/
 │   ├── blocked-commands-hook.sh       # Devin I/O wrapper
-│   ├── source-guard-hook.sh           # Devin I/O wrapper
 │   ├── workflow-reminder-hook.sh      # Devin I/O wrapper (ADR-0059)
-│   └── guards/                        # symlink → src/sdd/hooks/guards/
+│   └── guards/                        # copied from src/sdd/hooks/guards/
 ├── dist/                              # Pre-built MCP server + dashboard (build artifact)
 │   ├── docs-mcp.js
 │   ├── docs-dashboard.js
@@ -143,10 +144,6 @@ devin/sdd/
     {
       "matcher": "exec",
       "hooks": [{"type": "command", "command": "bash .devin/hooks/blocked-commands-hook.sh"}]
-    },
-    {
-      "matcher": "edit|write",
-      "hooks": [{"type": "command", "command": "bash .devin/hooks/source-guard-hook.sh"}]
     }
   ],
   "UserPromptSubmit": [
@@ -159,7 +156,7 @@ devin/sdd/
 
 **Hook wrappers** translate Devin's JSON stdin/stdout to the agent-neutral guard script contract:
 - Bridge `DEVIN_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` (guards read the latter)
-- Parse Devin's JSON to extract `tool_input.command` (blocked-commands) or `tool_input.file_path` (source-guard)
+- Parse Devin's JSON to extract `tool_input.command` (blocked-commands)
 - Guard scripts exit 1 on deny; wrappers translate exit 1 → exit 0 + `{"decision": "block", "reason": "<text>"}`
 - **Known Devin platform issue:** Both `block` and `deny` kill the agent's turn — it goes silent and requires user intervention to continue. This is a Devin CLI bug/limitation to raise with the Devin team. The correct behavior (as Claude Code does) is to let the agent see the block reason and continue its turn with an alternative approach. Despite this limitation, hooks still use `block` — a dead turn is better than letting a guarded action through.
 - **workflow-reminder wrapper** wraps guard stdout in `{"add_context": "<text>"}` (Devin's context injection format, unlike Claude's plain-text stdout)
@@ -170,7 +167,7 @@ Add a Devin build target that:
 1. Copies skills (excluding `local-setup`) into `devin/sdd/skills/`
 2. Prepends a Devin-specific invocation preamble after the YAML frontmatter in each copied skill. The preamble maps Claude's `Agent(subagent_type="<name>")` to Devin's `run_subagent(profile="<name>", task="<prompt>", title="<label>", is_background=true)`. No marker needed in canonical source — Claude build copies skills verbatim (they already use Claude syntax).
 3. Translates skill frontmatter: `user_invocable: true` → adds `triggers: [user, model]` (Devin's equivalent)
-4. Copies agents into `devin/sdd/agents/<name>/AGENT.md` subdirectory format. Rewrites Claude frontmatter to Devin-native: `tools: "*"` → `allowed-tools` list, `maxTurns` → removed, `run_in_background` → removed, `model: claude-sonnet-4-6` → `model: sonnet`
+4. Copies agents as flat `.md` files into `devin/sdd/agents/` (same structure as Claude). Rewrites frontmatter to Devin-compatible: `tools: "*"` → `allowed-tools` list, `maxTurns` → removed, `run_in_background` → removed, `model: claude-sonnet-4-6` → `model: sonnet`. Users install these to `.claude/agents/` where Devin imports them.
 5. Copies guard scripts into `devin/sdd/hooks/guards/`
 6. Copies compiled `dist/` assets (docs-mcp.js, docs-dashboard.js, ui/)
 7. Copies `context.md`
@@ -220,7 +217,7 @@ No new data model changes. The plugin reuses:
 
 ### In v1
 - Devin platform package (`devin/sdd/`) with setup skill, hooks, and build target
-- Hook wrappers for `exec`, `edit|write`, and `UserPromptSubmit`
+- Hook wrappers for `exec` (blocked-commands) and `UserPromptSubmit` (workflow-reminder). No source-guard hook — see limitation #3.
 - Agent files distributed via `.claude/agents/` import path (flat `.md` format, v1)
 - MCP server integration (docs-mcp via `.devin/config.json`)
 - Local-setup support for self-development
