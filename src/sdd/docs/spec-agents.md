@@ -18,6 +18,7 @@ All agents are pinned to `claude-sonnet-4-6`. This is a deliberate cost decision
 ### Cross-platform requirement
 
 Agent definitions are shared between Claude Code and Droid via symlinks (`droid/sdd/agents/ → src/sdd/.agent/agents/`, `.factory/droids/ → src/sdd/.agent/agents/`). The `model` field must use the **full model identifier** (e.g. `claude-sonnet-4-6`), not platform-specific shorthands:
+- `gemini/sdd/agents/` symlink (Gemini CLI extension)
 
 - `claude-sonnet-4-6` -- works on both Claude Code and Droid
 - `sonnet` -- works on Claude Code only, fails on Droid
@@ -32,6 +33,7 @@ Agent definitions live at `src/sdd/.agent/agents/<name>.md`. They are shared via
 - `.agent/agents/` symlink (vendor-neutral local dev path)
 - `claude/sdd/agents/` symlink (Claude Code plugin)
 - `droid/sdd/agents/` symlink (Droid plugin)
+- `gemini/sdd/agents/` symlink (Gemini CLI extension)
 - `.factory/droids/` symlink (Droid local dev)
 
 All paths resolve to the same canonical files. Edits to any symlinked path affect all platforms.
