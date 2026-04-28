@@ -9,6 +9,11 @@
         "matcher": "Edit|Write",
         "hooks": [{ "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/source-guard-hook.sh\"" }]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [{ "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/workflow-reminder-hook.sh\"" }]
+      }
     ]
   }
 }

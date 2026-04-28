@@ -1,3 +1,9 @@
 {
-  "hooks": {}
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [{ "type": "command", "command": "bash \"${DROID_PLUGIN_ROOT}/hooks/workflow-reminder-hook.sh\"" }]
+      }
+    ]
+  }
 }

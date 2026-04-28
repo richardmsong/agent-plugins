@@ -117,13 +117,14 @@ echo "Copying guards..."
 mkdir -p "$OUT/hooks/guards"
 cp "$SRC/hooks/guards/blocked-commands.sh" "$OUT/hooks/guards/"
 cp "$SRC/hooks/guards/source-guard.sh" "$OUT/hooks/guards/"
+cp "$SRC/hooks/guards/workflow-reminder.sh" "$OUT/hooks/guards/"
 
 # 10. Rewrite hook wrappers to use CLAUDE_PLUGIN_ROOT instead of relative src/ path
 # The source files contain: GUARD="$SCRIPT_DIR/../../../src/sdd/hooks/guards/..."
 # We replace the entire GUARD= line to avoid sed escaping issues with $ and quotes.
 # Note: uses a temp file instead of sed -i to be portable across BSD and GNU sed
 # (BSD sed requires `sed -i ''`, GNU sed requires `sed -i` — no single syntax works on both).
-for wrapper in "$OUT/hooks/blocked-commands-hook.sh" "$OUT/hooks/source-guard-hook.sh"; do
+for wrapper in "$OUT/hooks/blocked-commands-hook.sh" "$OUT/hooks/source-guard-hook.sh" "$OUT/hooks/workflow-reminder-hook.sh"; do
   guard_name=$(grep 'GUARD=' "$wrapper" | sed 's|.*/||' | tr -d '"')
   sed "s|^GUARD=.*|GUARD=\"\${CLAUDE_PLUGIN_ROOT}/hooks/guards/${guard_name}\"|" "$wrapper" > "$wrapper.tmp"
   mv "$wrapper.tmp" "$wrapper"
@@ -137,7 +138,8 @@ echo "Validating build..."
 for f in "$OUT/skills/setup/SKILL.md" "$OUT/.mcp.json" "$OUT/.claude-plugin/plugin.json" \
          "$OUT/dist/docs-mcp.js" "$OUT/dist/docs-dashboard.js" \
          "$OUT/docs-dashboard/dashboard.sh" "$OUT/docs-dashboard/ui/package.json" \
-         "$OUT/hooks/guards/blocked-commands.sh" "$OUT/hooks/guards/source-guard.sh"; do
+         "$OUT/hooks/guards/blocked-commands.sh" "$OUT/hooks/guards/source-guard.sh" \
+         "$OUT/hooks/guards/workflow-reminder.sh"; do
   [ -f "$f" ] || { echo "FATAL: missing $f"; exit 1; }
 done
 
