@@ -186,6 +186,7 @@ for platform_dir in "$REPO_ROOT"/*/sdd; do
   [ -d "$platform_dir/skills" ] || continue
 
   platform=$(basename "$(dirname "$platform_dir")")
+  rm -rf "$platform_dir/skills/local-setup"
   for skill in "$SRC/.agent/skills"/*/; do
     name=$(basename "$skill")
     [ "$name" = "local-setup" ] && continue

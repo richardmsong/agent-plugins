@@ -21,7 +21,8 @@ The analogous gap for `droids/` was closed in step 8b (platform agent templating
 | Where to add the step | After step 8b in build.sh | Keeps all per-platform output work together |
 | Transformation | Copy verbatim (no frontmatter template) | Skills have no platform-specific frontmatter; unlike agents they are plain markdown instruction files |
 | Exclusion | Skip `local-setup` (same rule as claude) | `local-setup` is a dev-only skill and must not ship in any plugin |
-| Existing real dirs | Preserve them (only delete symlinks, not real dirs) | `setup/` is authored directly in the output and must not be overwritten |
+| Existing real dirs | Skills absent from `src/.agent/skills/` are never targeted by the copy loop, so platform-specific real dirs (e.g. `setup/`) are never touched. For skills that do exist in src, any prior copy (real dir or symlink) is removed and replaced with a fresh copy. | `setup/` is not a skill in src, so it is naturally preserved; no explicit guard needed. |
+| local-setup cleanup | Explicitly remove `local-setup` from platform skill dirs before the copy loop | The `continue` guard skips the copy but does not remove a pre-existing `local-setup` symlink or dir left by `local-setup` skill; must be cleaned explicitly. |
 
 ## Impact
 
