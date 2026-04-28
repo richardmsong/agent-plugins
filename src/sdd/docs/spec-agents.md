@@ -99,3 +99,17 @@ Agents are invoked by the master session's `/feature-change` skill:
 4. **design-evaluator** -- `/design-audit` skill: multi-round ambiguity audit.
 
 All agents run in fresh context (no conversation history inherited). They read specs and ADRs from disk.
+
+## Integration Test Enforcement
+
+The implementation-evaluator's Phase 3 (test coverage) enforces integration test coverage for critical paths. Spec lines that touch auth flows, data flow (KV/DB/NATS), cross-component communication, stateful API endpoints, or infrastructure bootstrap must have integration test coverage — `UNIT_ONLY` is flagged as a gap with direction `CODE→FIX` for these categories.
+
+**What counts as an integration test:** Tests that run against real deployed infrastructure (real cluster, operator-mode NATS with JWT enforcement, real database). Tests using testcontainers with a vanilla NATS server (no operator mode) do not qualify for auth-related behavior.
+
+**Phase 3 table schema:** `Spec (doc:line) | Spec text | Unit test | Integration test | Verdict | Notes`. The `Integration test` column replaces the previous `E2E test` column and covers both integration and e2e tests. The `Notes` column is new.
+
+**ADR cross-reference:** ADRs that touch runtime behavior include an `## Integration Test Cases` section declaring required smoke tests. Purely cosmetic, config-only, or docs-only ADRs may skip this section with an explicit note. The implementation-evaluator checks that each declared test case has a corresponding test implementation. The dev-harness reads the same section to know which integration tests to build.
+
+**ADR template columns:**
+- `/plan-feature` (full template): `Test case | What it verifies | Setup/teardown | Components exercised` (4 columns)
+- `/feature-change` (minimum template): `Test case | What it verifies | Components exercised` (3 columns — omits `Setup/teardown` for brevity)
