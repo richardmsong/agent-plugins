@@ -12,7 +12,7 @@
    {
      "hooks": [{
        "type": "command",
-       "command": "bash \"$FACTORY_PROJECT_DIR/factory/sdd/hooks/workflow-reminder-hook.sh\""
+       "command": "bash \"$FACTORY_PROJECT_DIR/factory/sdd/hooks/guards/workflow-reminder.sh\""
      }]
    }
  ]
