@@ -6,5 +6,15 @@
     "git log",
     "git status",
     "git stash"
-  ]
+  ],
+   "hooks": {
+ "UserPromptSubmit": [
+   {
+     "hooks": [{
+       "type": "command",
+       "command": "bash \"$FACTORY_PROJECT_DIR/factory/sdd/hooks/workflow-reminder-hook.sh\""
+     }]
+   }
+ ]
+}
 }
