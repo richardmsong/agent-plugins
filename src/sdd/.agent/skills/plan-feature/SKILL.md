@@ -144,7 +144,9 @@ Use `AskUserQuestion` to resolve ambiguities. Rules:
 - **Use previews** for UI mockups or code snippets when comparing approaches
 - **Put your recommended option first** with "(Recommended)" in the label
 - **Don't ask yes/no questions** — offer real alternatives
-- **Don't ask questions you can answer from the code** — only ask about decisions
+- **Ask about design decisions, not implementation mechanics** — mechanics are how to implement a decision already made (which API, which loop construct); design decisions are what to decide (naming, placement, ownership, inclusion/exclusion, integration with existing systems). Ask about all design decisions with 2+ defensible choices, even if you have a preference. Having a preference does not mean the user shares it.
+- **Structural decisions always warrant a question** — the following categories require a question unless a prior ADR or spec has already explicitly resolved them: file/directory placement, naming conventions, which platform or component owns something, what is included vs excluded, how the feature integrates with existing systems, and CI/build impact.
+- **State your recommendation but still ask** — never silently adopt a recommended option. Write "(Recommended)" in the option label, explain why, and ask. The loophole "I have a clear answer so I won't ask" is closed.
 - **Always include design ramifications in the question text** — explain the tradeoffs and consequences of each choice directly in the question, not just in the option descriptions. The user should be able to understand what each choice means for the system without having to ask "what are the ramifications?"
 
 **After each AskUserQuestion returns, the first thing you do is edit the ADR file** — do not queue up the next batch first. Write the user's decisions into the relevant sections, delete the now-resolved entry from `## Open questions`, and append any new ambiguities surfaced by the answers. Only then draft follow-up questions and ask again.
@@ -154,6 +156,14 @@ Use `AskUserQuestion` to resolve ambiguities. Rules:
 **After each round of answers, explicitly audit for remaining ambiguity.** Walk through the entire design end-to-end — every data flow, every error path, every integration point — and ask yourself: "Could I implement this right now without guessing?" If the answer is no anywhere, formulate the ambiguity as a question and ask it. Keep doing this until you can honestly say there are zero open questions. Do not ask the user "is there anything else?" — it's your job to find the gaps, not theirs.
 
 ---
+
+## Step 3b — Decision inventory (before finalizing)
+
+Before moving to Step 4, walk through every design decision embedded in the current ADR draft — including decisions made during research and early drafting that were never explicitly put to the user as a question. For each one, ask: "Did the user explicitly confirm this, or did I decide it autonomously?"
+
+Any decision that was made autonomously and falls into a structural category (placement, naming, ownership, inclusion/exclusion, CI/build impact, integration with existing systems) must be surfaced as a question now if it hasn't been asked yet. Batch them into AskUserQuestion calls (up to 4 per call) following the same rules as Step 3.
+
+Only proceed to Step 4 once every structural decision has an explicit user answer on record — either from a prior Q&A round or from this inventory pass.
 
 ## Step 4 — Finalize the ADR + update impacted specs
 
@@ -454,11 +464,11 @@ Which re-invokes dev-harness with the updated spec. The loop continues until imp
 
 ## Anti-patterns
 
-- **Don't assume answers** — if you're not sure, ask
+- **Don't assume answers** — if there are 2+ defensible choices, ask regardless of whether you have a preference
 - **Don't ask one question at a time** — batch them, the user's time is valuable
 - **Don't write code** — this skill produces an ADR and spec edits only (and edits docs during backpressure)
 - **Don't skip research** — uninformed questions waste the user's time; the docs MCP makes research cheap
-- **Don't present false choices** — if there's only one reasonable option, state it as your recommendation and ask if they agree
+- **Don't present false choices** — if there's only one reasonable option, state it as your recommendation and ask if they agree. But if there are two or more reasonable options, never silently pick one.
 - **Don't ask about implementation details** — ask about behavior, scope, and architecture. Implementation is for the dev-harness.
 - **Don't rewrite old ADRs** — supersede them with a new ADR instead
 - **Don't split the ADR commit from the spec commit** — the co-commit is the lineage edge
