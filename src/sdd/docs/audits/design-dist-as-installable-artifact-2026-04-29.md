@@ -61,3 +61,17 @@
 | 1 | Vite content-hashed filenames vs per-file stubs | Assumed docs-dashboard is pre-compiled; actually Vite runs at dev time via dashboard.sh — source files have stable filenames | Corrected: docs-dashboard/ is distributed as source, not compiled; per-file stubs on stable source filenames; `ui/dist/` excluded from stubs | factual |
 | 2 | `dashboard.sh` not mentioned | Overlooked as a file that needs a stub | dashboard.sh is a stable source file — gets its own stub like any other file in docs-dashboard/ | factual |
 | 3 | `src/sdd/skills/` frontmatter stripping missing | Component Changes listed agents but forgot skills | Added `src/sdd/skills/*/SKILL.md` to Component Changes and Impact sections | factual |
+
+### Round 4
+
+**Gaps found: 2 (0 blocking, 2 warnings)**
+
+1. **`docs-dashboard/` listed in Compiled artifacts row contradicts dedicated stubs row** — Compiled artifacts row listed `docs-dashboard/ UI assets` as compiled, but the dedicated `docs-dashboard/ stubs` row says it's distributed as source. Contradiction.
+2. **Linter orphan-check has no exclusion list** — `src/sdd/` contains tests/, node_modules/, build.go, go.mod, etc. that don't need stubs. The phrase "that should have a corresponding stub" is ambiguous without an explicit exclusion list.
+
+#### Fixes applied
+
+| # | Gap | Cause | Resolution | Type |
+|---|-----|-------|-----------|------|
+| 1 | Compiled artifacts row contradicts docs-dashboard stubs row | Round 2 added docs-dashboard/ to compiled artifacts before Round 3 clarified it's distributed as source; the old row wasn't updated | Removed `docs-dashboard/` from Compiled artifacts row; now lists only `docs-mcp.js` and `docs-dashboard.js`; also deleted `ui/dist/` (Vite build cache) from source tree | factual |
+| 2 | Linter orphan-check exclusions missing | ADR said "every file in src/sdd/ that should have a stub" without defining "should" | Added explicit exclusion list to linter decision: `**/tests/**`, `**/__tests__/**`, `**/node_modules/**`, `build.go`, `go.mod`, `go.sum`, `version.json`, `bun.lock`, `**/package.json`, `**/tsconfig*.json`, `docs/**` | factual |
