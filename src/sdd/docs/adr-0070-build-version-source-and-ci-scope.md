@@ -1,8 +1,9 @@
 # ADR: Neutral version source of truth and full CI git add scope
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-04-29: accepted
+- 2026-04-29: implemented — all scope CLEAN
 
 ## Overview
 
