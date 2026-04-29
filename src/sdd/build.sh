@@ -91,18 +91,30 @@ echo "Bundling docs-dashboard..."
 bun build --target=bun "$SRC/docs-dashboard/src/server.ts" \
   --outfile "$OUT/dist/docs-dashboard.js"
 
-# 6b. Copy UI source and dashboard.sh into the plugin output
-# The wrapper script and UI source ship with the plugin so `bun install` + `vite dev`
-# can run at dashboard launch time (first-run bun install is handled by dashboard.sh).
-echo "Copying docs-dashboard UI source and wrapper..."
-mkdir -p "$OUT/docs-dashboard"
-rsync -a --exclude='node_modules' --exclude='dist' \
-  "$SRC/docs-dashboard/ui/" "$OUT/docs-dashboard/ui/"
-cp "$SRC/docs-dashboard/dashboard.sh" "$OUT/docs-dashboard/dashboard.sh"
-chmod +x "$OUT/docs-dashboard/dashboard.sh"
+# === Unified per-platform loop ===
+echo "Building platform outputs..."
+for platform_dir in "$REPO_ROOT"/*/sdd; do
+  # Skip the source directory itself
+  [ "$platform_dir" = "$SRC" ] && continue
+  platform=$(basename "$(dirname "$platform_dir")")
+  echo "  platform: $platform"
 
-# 7b. Write the bundled .mcp.json (overwrite existing — it references TS source)
-cat > "$OUT/.mcp.json" << 'MCP_EOF'
+  # dist/ — copy bundled servers (built into $OUT/dist/ above; skip if this IS $OUT)
+  if [ "$platform_dir" != "$OUT" ]; then
+    rm -rf "$platform_dir/dist"
+    cp -R "$OUT/dist" "$platform_dir/dist"
+  fi
+
+  # docs-dashboard — UI source and launch wrapper
+  mkdir -p "$platform_dir/docs-dashboard"
+  rsync -a --exclude='node_modules' --exclude='dist' \
+    "$SRC/docs-dashboard/ui/" "$platform_dir/docs-dashboard/ui/"
+  cp "$SRC/docs-dashboard/dashboard.sh" "$platform_dir/docs-dashboard/dashboard.sh"
+  chmod +x "$platform_dir/docs-dashboard/dashboard.sh"
+
+  # MCP registration config — format differs by platform
+  if [ -d "$platform_dir/.claude-plugin" ]; then
+    cat > "$platform_dir/.mcp.json" << 'MCP_EOF'
 {
   "docs": {
     "command": "bun",
@@ -113,14 +125,22 @@ cat > "$OUT/.mcp.json" << 'MCP_EOF'
   }
 }
 MCP_EOF
-
-# === Unified per-platform loop ===
-echo "Building platform outputs..."
-for platform_dir in "$REPO_ROOT"/*/sdd; do
-  # Skip the source directory itself
-  [ "$platform_dir" = "$SRC" ] && continue
-  platform=$(basename "$(dirname "$platform_dir")")
-  echo "  platform: $platform"
+  elif [ -d "$platform_dir/.factory-plugin" ]; then
+    cat > "$platform_dir/mcp.json" << 'MCP_EOF'
+{
+  "mcpServers": {
+    "docs": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "run",
+        "${DROID_PLUGIN_ROOT}/dist/docs-mcp.js"
+      ]
+    }
+  }
+}
+MCP_EOF
+  fi
 
   # Skills (verbatim, exclude local-setup)
   rm -rf "$platform_dir/skills/local-setup"
@@ -182,7 +202,11 @@ for f in "$OUT/skills/setup/SKILL.md" "$OUT/.mcp.json" "$OUT/.claude-plugin/plug
          "$OUT/dist/docs-mcp.js" "$OUT/dist/docs-dashboard.js" \
          "$OUT/docs-dashboard/dashboard.sh" "$OUT/docs-dashboard/ui/package.json" \
          "$OUT/hooks/guards/blocked-commands.sh" "$OUT/hooks/guards/source-guard.sh" \
-         "$OUT/hooks/guards/workflow-reminder.sh"; do
+         "$OUT/hooks/guards/workflow-reminder.sh" \
+         "$REPO_ROOT/factory/sdd/dist/docs-mcp.js" \
+         "$REPO_ROOT/factory/sdd/dist/docs-dashboard.js" \
+         "$REPO_ROOT/factory/sdd/docs-dashboard/dashboard.sh" \
+         "$REPO_ROOT/factory/sdd/mcp.json"; do
   [ -f "$f" ] || { echo "FATAL: missing $f"; exit 1; }
 done
 
