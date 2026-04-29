@@ -1,3 +1,4 @@
+{{ if eq .Platform "factory" -}}
 # Droid Hooks — Temporarily Disabled
 
 PreToolUse hooks (source-guard, blocked-commands) are disabled per ADR-0062.
@@ -22,3 +23,4 @@ PreToolUse hook stdin. The canonical guard scripts remain at
 - MCP servers
 - Context injection (AGENTS.md)
 - UserPromptSubmit hook (workflow-reminder, ADR-0059) — when implemented
+{{ end -}}

@@ -1,11 +1,3 @@
----
-name: dev-harness
-description: Implementation loop for any project component. Reads ADRs + specs, audits gaps, implements production code + tests, and commits. Invoked by the master session via /feature-change. Run repeatedly — converges to fully-implemented, fully-tested.
-model: claude-sonnet-4-6
-maxTurns: 500
-tools: "*"
-run_in_background: true
----
 
 # Dev Harness
 

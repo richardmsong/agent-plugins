@@ -1,4 +1,4 @@
-{
+{{ if eq .Platform "claude" }}{
   "hooks": {
     "PreToolUse": [
       {
@@ -16,4 +16,4 @@
       }
     ]
   }
-}
+}{{ else }}{}{{ end }}

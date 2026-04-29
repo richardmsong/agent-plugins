@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "spec-driven-dev",
-      "source": "./factory/sdd",
+      "source": "./factory/sdd/dist",
       "description": "Spec-driven development workflow: ADR authoring, design audit, spec compliance, and implementation orchestration",
       "category": "development"
     }

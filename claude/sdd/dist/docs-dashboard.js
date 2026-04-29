@@ -5516,3 +5516,4 @@ if (import.meta.main) {
 export {
   buildStartupBanner
 };
+

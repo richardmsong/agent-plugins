@@ -1,1 +1,1 @@
-import "@testing-library/jest-dom";
+{{ include "docs-dashboard/ui/src/test-setup.ts" }}

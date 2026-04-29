@@ -20498,3 +20498,4 @@ process.on("SIGTERM", () => {
 });
 await server.connect(transport);
 console.error("[docs-mcp] Server ready");
+

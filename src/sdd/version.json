@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.8",
   "description": "Spec-driven development workflow: ADR authoring, design audit, spec compliance, and implementation orchestration",
-  "_buildHash": "01e564d54d83e9df98fa299a44ddb3191e488923"
+  "_buildHash": "d570e70814f8a03ed25a602fbb40f85fcbd39d61b8812206dd73ca0cc7e9ab1a"
 }

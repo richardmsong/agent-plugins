@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude I/O wrapper for source-guard
+# {{ .Platform }} I/O wrapper for source-guard
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 GUARD="${SCRIPT_DIR}/guards/source-guard.sh"
 INPUT=$(cat)

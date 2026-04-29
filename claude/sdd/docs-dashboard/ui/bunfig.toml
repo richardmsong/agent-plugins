@@ -1,2 +1,1 @@
-[test]
-preload = ["./src/bun-test-setup.ts"]
+{{ include "docs-dashboard/ui/bunfig.toml" }}

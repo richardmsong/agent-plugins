@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "spec-driven-dev",
-      "source": "./claude/sdd",
+      "source": "./claude/sdd/dist",
       "description": "Spec-driven development workflow: ADR authoring, design audit, spec compliance, and implementation orchestration",
       "category": "development"
     }

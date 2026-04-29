@@ -4,30 +4,45 @@ on:
     branches: [main]
     paths:
       - 'src/sdd/**'
-      - 'factory/sdd/.agent-templates/**'
+      - 'factory/sdd/**'
+      - 'claude/sdd/**'
   pull_request:
     paths:
       - 'src/sdd/**'
-      - 'factory/sdd/.agent-templates/**'
+      - 'factory/sdd/**'
+      - 'claude/sdd/**'
 
 permissions:
   contents: write
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - run: cd src/sdd && go run build.go --lint
+
   build:
     runs-on: ubuntu-latest
+    needs: lint
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
       - uses: oven-sh/setup-bun@v2
-      - run: bash src/sdd/build.sh
+      - run: cd src/sdd && go run build.go
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add --all
-          git diff --cached --quiet || git commit -m "build(plugin): auto-build claude/sdd/ from src/sdd/ [skip ci]"
+          git diff --cached --quiet || git commit -m "build(plugin): auto-build dist/ from src/sdd/ [skip ci]"
           git push origin HEAD

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude I/O wrapper for blocked-commands guard
+# {{ .Platform }} I/O wrapper for blocked-commands guard
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 GUARD="${SCRIPT_DIR}/guards/blocked-commands.sh"
 INPUT=$(cat)
