@@ -28,7 +28,9 @@ Two compounding problems:
 | Uniform stub rule | Every file in `dist/` has exactly one stub in `platform/sdd/` (outside dist/); `build.go` renders stubs → dist/ | No special-cased files; all config is visible in the stub tree |
 | Template data | Shared context: version.json fields + platform vars; YAML frontmatter (if present) merged in as additional fields | Uniform across all file types; no branching on extension |
 | `include` function | Custom Go template function: reads `src/sdd/<path>`, renders it with the same data context, returns inline | Decouples stub directory name (droids/) from src directory name (agents/); explicit in the template |
-| Compiled artifacts | `docs-mcp.js`, `docs-dashboard.js`, UI assets — build.go compiles them, then stub templates reference the build output via `{{ include }}` or `{{ compiledArtifact "path" }}` to place them into dist/ | Maintains uniform stub rule: every dist/ file has a stub; compiled artifacts are no exception |
+| Compiled artifacts | `docs-mcp.js`, `docs-dashboard.js`, `docs-dashboard/` UI assets — build.go compiles them first (shells out to bun), then per-file stubs in the platform dir reference the compiled outputs via `{{ include }}`. Each compiled output has its own stub that mirrors the dist/ output structure. | Maintains uniform stub rule: every dist/ file has a stub; compiled artifacts are no exception |
+| `docs-dashboard/` stubs | Each file in the compiled dashboard output (e.g. `docs-dashboard/index.html`, `docs-dashboard/assets/*.js`) has a corresponding stub in `platform/sdd/docs-dashboard/` that `{{ include }}`s the compiled output from a build staging area | Per-file stubs, not an opaque directory copy |
+| Setup skill extraction | Diff the two existing platform setup skills; shared content goes to `src/sdd/skills/setup/SKILL.md` body; divergent parts stay in platform stubs using template conditionals (`{{ if eq .Platform "claude" }}`) | Explicit split; no judgment calls for the implementer |
 | src/sdd/agents/ body | Body-only, no frontmatter — stubs own the frontmatter entirely | Clean separation; frontmatter in src would be misleading since it is never used |
 | Stub → src body mapping | Stubs use `{{ include "agents/<name>.md" }}` in the body — a custom Go template function registered by `build.go` that reads and renders the referenced file from `src/sdd/`; if body has no `include`, stub renders as-is | Reference is in the template itself; no special frontmatter field; survives any directory renaming; `droids/` → `agents/` mapping is explicit in the stub body |
 | Marketplace manifest | Static files at repo root: `agent-plugins/.factory-plugin/marketplace.json` and `agent-plugins/.claude-plugin/marketplace.json`, pointing to `factory/sdd/dist` and `claude/sdd/dist` respectively | Root-level manifests not compiled; dist/ plugin.json is the compiled manifest |
@@ -158,14 +160,26 @@ Deleted — replaced by stubs.
 ### `factory/sdd/.factory-plugin/plugin.json` and `factory/sdd/mcp.json`
 Convert from hard-coded JSON to Go template stubs. Add `{{ .Version }}`, `{{ .Description }}`, `{{ .BuildHash }}`, and any path variables. Rendered into dist/ by build.go.
 
-### `claude/sdd/.claude-plugin/plugin.json`, `claude/sdd/.mcp.json`, `claude/sdd/context.md`
+### `claude/sdd/.claude-plugin/plugin.json`, `claude/sdd/.mcp.json`
 Convert to Go template stubs if not already. Add template variables as needed. Rendered into dist/ by build.go.
 
+### `factory/sdd/context.md` and `claude/sdd/context.md`
+Convert to stubs containing `{{ include "context.md" }}` — pulls body from `src/sdd/context.md`. Satisfies the linter's `{{ }}` requirement while keeping the content platform-neutral.
+
 ### `agent-plugins/.factory-plugin/marketplace.json`
-New static file pointing to `factory/sdd/dist`.
+Update existing file: change `source` from `./factory/sdd` to `./factory/sdd/dist`.
 
 ### `agent-plugins/.claude-plugin/marketplace.json`
-New static file pointing to `claude/sdd/dist`.
+Update existing file: change `source` from `./claude/sdd` to `./claude/sdd/dist`.
+
+### `agent-plugins/.droid-plugin/`
+Delete — redundant with `.factory-plugin/`.
+
+### `.github/workflows/build-plugin.yml`
+- Add `actions/setup-go@v5` step (Go required for `build.go`)
+- Change `run:` from `bash src/sdd/build.sh` to `cd src/sdd && go run build.go`
+- Update `paths` trigger: remove `factory/sdd/.agent-templates/**`; add `factory/sdd/**` and `claude/sdd/**` (trigger on any stub change)
+- Add separate `lint` job or step: `cd src/sdd && go run build.go --lint` runs before the build step
 
 ## Impact
 
@@ -184,8 +198,10 @@ New static file pointing to `claude/sdd/dist`.
 - `factory/sdd/.agent-templates/` — deleted
 - `src/sdd/skills/local-setup/` — deleted (development-only, doesn't belong in dist/)
 - `src/sdd/skills/setup/SKILL.md` — new; common setup body extracted from existing platform-specific setup skills
-- `agent-plugins/.factory-plugin/marketplace.json` — new static file
-- `agent-plugins/.claude-plugin/marketplace.json` — new static file
+- `agent-plugins/.factory-plugin/marketplace.json` — update source to `./factory/sdd/dist`
+- `agent-plugins/.claude-plugin/marketplace.json` — update source to `./claude/sdd/dist`
+- `agent-plugins/.droid-plugin/` — deleted (redundant with `.factory-plugin/`)
+- `.github/workflows/build-plugin.yml` — switch to Go, update paths trigger, add lint step
 
 ## Scope
 
