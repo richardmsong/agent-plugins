@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "docs": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "run",
+        "${DROID_PLUGIN_ROOT}/dist/docs-mcp.js"
+      ]
+    }
+  }
+}

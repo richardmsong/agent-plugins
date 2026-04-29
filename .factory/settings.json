@@ -7,18 +7,6 @@
     "git status",
     "git stash"
   ],
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh -c 'echo \"[HOOK-TS] $(/bin/date +%Y-%m-%dT%H:%M:%S)\"'"
-          }
-        ]
-      }
-    ]
-  },
   "enabledPlugins": {
     "spec-driven-dev@agent-plugins": true
   }
