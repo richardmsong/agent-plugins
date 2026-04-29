@@ -1,6 +1,6 @@
 ---
 name: design-audit
-description: Multi-round ambiguity audit loop for a design document. Calls /design-evaluator (fresh-context agent) repeatedly, fixing gaps between rounds until CLEAN. Logs all findings, fixes, and decisions to .agent/audits/.
+description: Multi-round ambiguity audit loop for a design document. Calls /design-evaluator (fresh-context agent) repeatedly, fixing gaps between rounds until CLEAN. Logs all findings, fixes, and decisions to docs/audits/.
 version: 1.0.0
 user_invocable: true
 argument-hint: <path to design document>
@@ -43,9 +43,9 @@ Check that the file path exists and is a markdown file. If no path is given, loo
 
 ## Step 2 — Initialize audit log
 
-Derive the log filename from the design doc: `docs/adr-0007-github-oauth.md` -> `.agent/audits/design-github-oauth-<YYYY-MM-DD>.md`.
+Derive the log filename from the design doc: `docs/adr-0007-github-oauth.md` -> `docs/audits/design-github-oauth-<YYYY-MM-DD>.md`.
 
-Create `.agent/audits/` if it doesn't exist. If the log file already exists (multiple audits per day), append.
+Create `docs/audits/` if it doesn't exist. If the log file already exists (multiple audits per day), append.
 
 Write the header:
 
@@ -69,7 +69,7 @@ Agent({
 })
 ```
 
-The evaluator is a **separate agent** (`subagent_type="design-evaluator"`) — it has no conversation context from this session. It reads only the design document and the codebase. It saves its results to `.agent/audits/` and returns either CLEAN or a gap list.
+The evaluator is a **separate agent** (`subagent_type="design-evaluator"`) — it has no conversation context from this session. It reads only the design document and the codebase. It saves its results to `docs/audits/` and returns either CLEAN or a gap list.
 
 The evaluator can also be spawned standalone (single-pass check without the fix loop) by any caller using `Agent(subagent_type="design-evaluator", ...)`.
 
@@ -184,4 +184,4 @@ CLEAN — no blocking gaps found.
 
 Design documents are written in the context of a conversation — the author has full context from Q&A sessions and implicitly relies on decisions discussed but not written down. A context-free evaluator catches those gaps. This is the same principle as code review: fresh eyes find what the author can't see.
 
-The audit log preserves the history of what was found and how it was resolved. This serves the same purpose as the implementation-evaluator's `.agent/audits/` logs: traceability of decisions and fixes across rounds.
+The audit log preserves the history of what was found and how it was resolved. This serves the same purpose as the implementation-evaluator's `docs/audits/` logs: traceability of decisions and fixes across rounds.
