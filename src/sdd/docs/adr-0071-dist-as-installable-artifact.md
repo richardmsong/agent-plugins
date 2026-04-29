@@ -1,8 +1,9 @@
 # ADR: dist/ as the installable plugin artifact per platform
 
-**Status**: draft
+**Status**: accepted
 **Status history**:
 - 2026-04-29: draft
+- 2026-04-29: accepted — design audit CLEAN after 5 rounds
 
 ## Overview
 
