@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude I/O wrapper for source-guard
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-GUARD="${CLAUDE_PLUGIN_ROOT}/hooks/guards/source-guard.sh"
+GUARD="${SCRIPT_DIR}/guards/source-guard.sh"
 INPUT=$(cat)
 
 # Subagents have an agent_type field — let them through unconditionally.

@@ -73,10 +73,6 @@ for target in targets:
     print(f'  synced: {os.path.relpath(target, repo_root)}')
 " "$SOURCE_PLUGIN" "$CURRENT_HASH" "$REPO_ROOT" "$NO_BUMP"
 
-# 1. Remove stale symlinks in OUT (leave real files intact)
-echo "Cleaning stale symlinks..."
-find "$OUT" -type l -delete
-
 # 2. Install workspace dependencies (needed for workspace:* resolution)
 # Note: --frozen-lockfile is NOT used because bun.lock is gitignored
 # (it contained internal registry URLs). bun install regenerates it from package.json.
@@ -94,20 +90,6 @@ bun build --target=bun "$SRC/docs-mcp/src/index.ts" --outfile "$OUT/dist/docs-mc
 echo "Bundling docs-dashboard..."
 bun build --target=bun "$SRC/docs-dashboard/src/server.ts" \
   --outfile "$OUT/dist/docs-dashboard.js"
-
-# 6. Copy skills (excluding local-setup which is dev-only)
-# NOTE: The setup/ skill has NO counterpart in src/sdd/.agent/skills/ — it lives
-# only in claude/sdd/skills/setup/ and is the one skill that is authored directly
-# in the output directory (it's Claude-specific and not part of the canonical source).
-# The per-skill rm+cp below is safe because it only touches skills that exist in SRC.
-# A full `rm -rf "$OUT/skills"` would delete setup/ — never do that.
-echo "Copying skills..."
-for skill in "$SRC/.agent/skills"/*/; do
-  name=$(basename "$skill")
-  [ "$name" = "local-setup" ] && continue
-  rm -rf "$OUT/skills/$name"
-  cp -R "$skill" "$OUT/skills/$name"
-done
 
 # 6b. Copy UI source and dashboard.sh into the plugin output
 # The wrapper script and UI source ship with the plugin so `bun install` + `vite dev`
@@ -132,92 +114,67 @@ cat > "$OUT/.mcp.json" << 'MCP_EOF'
 }
 MCP_EOF
 
-# 8. Copy agents
-echo "Copying agents..."
-rm -rf "$OUT/agents"
-cp -R "$SRC/.agent/agents" "$OUT/agents"
-
-# 8b. Template agents for non-Claude platforms (ADR-0063)
-# For each platform with .agent-templates/, strip Claude frontmatter from canonical
-# agents and replace with platform-native frontmatter.
-echo "Templating platform agents..."
+# === Unified per-platform loop ===
+echo "Building platform outputs..."
 for platform_dir in "$REPO_ROOT"/*/sdd; do
-  templates="$platform_dir/.agent-templates"
-  [ -d "$templates" ] || continue
-
+  # Skip the source directory itself
+  [ "$platform_dir" = "$SRC" ] && continue
   platform=$(basename "$(dirname "$platform_dir")")
-  out_droids="$platform_dir/droids"
-  rm -rf "$out_droids"
-  mkdir -p "$out_droids"
+  echo "  platform: $platform"
 
-  for canonical in "$SRC/.agent/agents"/*.md; do
-    agent_name=$(basename "$canonical" .md)
-    template="$templates/${agent_name}.yaml"
-
-    if [ ! -f "$template" ]; then
-      echo "FATAL: missing template $template for agent $agent_name on platform $platform"
-      exit 1
-    fi
-
-    # Extract body: everything after the closing --- of YAML frontmatter
-    body=$(awk '/^---$/{n++; if(n==2){p=1; next}} p' "$canonical")
-    if [ -z "$body" ]; then
-      echo "FATAL: agent $agent_name has no body after frontmatter stripping"
-      exit 1
-    fi
-
-    # Write: platform frontmatter + body
-    {
-      echo "---"
-      cat "$template"
-      echo "---"
-      echo "$body"
-    } > "$out_droids/${agent_name}.md"
-
-    echo "  $platform/$agent_name.md"
-  done
-done
-
-# 8c. Copy skills into non-Claude platform output directories (ADR-0001)
-# local-setup is dev-only and excluded. Real dirs (e.g. setup/) are preserved.
-echo "Copying platform skills..."
-for platform_dir in "$REPO_ROOT"/*/sdd; do
-  [ "$platform_dir" = "$OUT" ] && continue  # claude handled in step 6
-  [ -d "$platform_dir/skills" ] || continue
-
-  platform=$(basename "$(dirname "$platform_dir")")
+  # Skills (verbatim, exclude local-setup)
   rm -rf "$platform_dir/skills/local-setup"
   for skill in "$SRC/.agent/skills"/*/; do
     name=$(basename "$skill")
     [ "$name" = "local-setup" ] && continue
     target="$platform_dir/skills/$name"
-    [ -L "$target" ] && rm "$target"
-    [ -d "$target" ] && rm -rf "$target"
+    rm -rf "$target"
     cp -R "$skill" "$target"
-    echo "  $platform/skills/$name"
   done
+
+  # Agents/droids — detect format from .agent-templates/ presence
+  templates="$platform_dir/.agent-templates"
+  if [ -d "$templates" ]; then
+    agents_out="$platform_dir/droids"
+    rm -rf "$agents_out"
+    mkdir -p "$agents_out"
+    for canonical in "$SRC/.agent/agents"/*.md; do
+      agent_name=$(basename "$canonical" .md)
+      template="$templates/${agent_name}.yaml"
+      if [ ! -f "$template" ]; then
+        echo "FATAL: missing template $template"
+        exit 1
+      fi
+      body=$(awk '/^---$/{n++; if(n==2){p=1; next}} p' "$canonical")
+      if [ -z "$body" ]; then
+        echo "FATAL: agent $agent_name has no body after frontmatter stripping"
+        exit 1
+      fi
+      {
+        echo "---"
+        cat "$template"
+        echo "---"
+        echo "$body"
+      } > "$agents_out/${agent_name}.md"
+    done
+  else
+    agents_out="$platform_dir/agents"
+    rm -rf "$agents_out"
+    cp -R "$SRC/.agent/agents" "$agents_out"
+  fi
+
+  # Guards — copy all from src to platform's hooks/guards/
+  if [ -d "$platform_dir/hooks" ]; then
+    mkdir -p "$platform_dir/hooks/guards"
+    for guard in "$SRC/hooks/guards"/*.sh; do
+      cp "$guard" "$platform_dir/hooks/guards/"
+    done
+  fi
+
+  # context.md
+  rm -f "$platform_dir/context.md"
+  cp "$SRC/context.md" "$platform_dir/context.md"
 done
-
-# 9. Copy guard scripts
-echo "Copying guards..."
-mkdir -p "$OUT/hooks/guards"
-cp "$SRC/hooks/guards/blocked-commands.sh" "$OUT/hooks/guards/"
-cp "$SRC/hooks/guards/source-guard.sh" "$OUT/hooks/guards/"
-cp "$SRC/hooks/guards/workflow-reminder.sh" "$OUT/hooks/guards/"
-
-# 10. Rewrite hook wrappers to use CLAUDE_PLUGIN_ROOT instead of relative src/ path
-# The source files contain: GUARD="$SCRIPT_DIR/../../../src/sdd/hooks/guards/..."
-# We replace the entire GUARD= line to avoid sed escaping issues with $ and quotes.
-# Note: uses a temp file instead of sed -i to be portable across BSD and GNU sed
-# (BSD sed requires `sed -i ''`, GNU sed requires `sed -i` — no single syntax works on both).
-for wrapper in "$OUT/hooks/blocked-commands-hook.sh" "$OUT/hooks/source-guard-hook.sh" "$OUT/hooks/workflow-reminder-hook.sh"; do
-  guard_name=$(grep 'GUARD=' "$wrapper" | sed 's|.*/||' | tr -d '"')
-  sed "s|^GUARD=.*|GUARD=\"\${CLAUDE_PLUGIN_ROOT}/hooks/guards/${guard_name}\"|" "$wrapper" > "$wrapper.tmp"
-  mv "$wrapper.tmp" "$wrapper"
-done
-
-# 11. Copy context.md
-cp "$SRC/context.md" "$OUT/context.md"
 
 # 12. Validate critical files exist
 echo "Validating build..."
