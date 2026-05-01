@@ -1,8 +1,9 @@
 # ADR: Fix dashboard entrypoint path and Vite workspace dep resolution in plugin installs
 
-**Status**: accepted
+**Status**: implemented
 **Status history**:
 - 2026-05-01: accepted
+- 2026-05-01: implemented — all scope CLEAN
 
 ## Overview
 
