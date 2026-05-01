@@ -12,7 +12,7 @@ Established by ADR-0027. Extended by ADR-0028 (bind `0.0.0.0`), ADR-0029 (`runLi
 
 `/dashboard` launches two background processes via a single bash wrapper (`docs-dashboard/dashboard.sh`):
 
-1. **Backend** — the Bun server (this spec). Serves `/api/*` and `/events`; does NOT serve any static UI content. Entrypoint is `dist/docs-dashboard.js` in plugin installs (bundled by `build.sh`) or `docs-dashboard/src/server.ts` in local-dev (source). Bun runs either.
+1. **Backend** — the Bun server (this spec). Serves `/api/*` and `/events`; does NOT serve any static UI content. Entrypoint resolution in `dashboard.sh`: check `$PLATFORM_ROOT/docs-dashboard.js` first (the bundled artifact — present in plugin installs where `PLATFORM_ROOT` is the `dist/` directory itself); fall back to `$PLATFORM_ROOT/docs-dashboard/src/server.ts` (local-dev source, used when no bundle exists). Bun runs either.
 2. **Vite dev server** — serves the UI source from `docs-dashboard/ui/` with HMR. Vite's `server.proxy` forwards `/api` and `/events` to the backend port, which the wrapper passes in via the `BACKEND_PORT` environment variable (default 4567).
 
 The wrapper installs a `trap` on EXIT/SIGINT/SIGTERM that kills both children, so killing the wrapper cleans up the whole tree.
