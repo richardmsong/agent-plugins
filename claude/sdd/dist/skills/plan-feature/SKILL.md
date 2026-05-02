@@ -52,6 +52,10 @@ Examples:
    Status: draft, compare slugs). If one exists, offer to resume.
 
 1. Research (read relevant specs + related ADRs via docs MCP)
+1b. Big-picture conversation (AskUserQuestion). Share what you found:
+   feasibility assessment, how the idea fits the existing system, what shape
+   it might take, open unknowns. Ask the user to confirm or redirect before
+   writing anything. This is the "do we even agree on what this is?" step.
 2. WRITE the draft ADR file to disk NOW — with whatever you know so far, plus
    an "Open questions" section for everything unresolved. Stubs and TODOs are
    fine. This is the durability step — everything from here forward amends
@@ -117,6 +121,23 @@ The goal is to understand:
 
 ---
 
+## Step 1b — Big-picture conversation
+
+**Before writing anything**, share what you found in research and have a real conversation about whether this idea is feasible and what shape it should take. The user often has an idea but doesn't know if it's achievable, what its scope is, or how it fits the existing system. Your job here is to give them that picture — and let them redirect you before you commit anything to disk.
+
+Use `AskUserQuestion` (1–2 questions per call). Cover:
+
+- **Feasibility**: what would this require to build? Any blockers, missing infrastructure, or hard dependencies?
+- **Shape**: how does this fit into the existing system — does it extend something that exists, replace it, or add a new seam?
+- **Scope signal**: is the user imagining something small and targeted, or a bigger rethink? Let their answer shape how you draft.
+- **Direction confirmation**: summarize your preliminary understanding of what they're asking for, and ask if you've got it right before proceeding.
+
+This step is not a Q&A about design details — those come in Step 3. This is the "do we agree on what this even is?" conversation. Keep it open-ended and listen.
+
+After this conversation settles the shape, proceed to Step 2 to write the draft.
+
+---
+
 ## Step 2 — Write the initial draft ADR file (DO THIS BEFORE ASKING QUESTIONS)
 
 Pick a slug and write `docs/adr-NNNN-<slug>.md` to disk now. ADRs are numbered with a zero-padded 4-digit monotonic global counter — compute N by extracting the highest existing number and adding 1: `N = $(ls docs/adr-*.md | sed 's|.*/adr-||' | cut -c1-4 | sort -n | tail -1) + 1` at write time. Do NOT use `wc -l` — file count diverges from max number when numbers are reused or files deleted. If a later commit reveals the number's already taken, bump by 1 and retry (the rename is mechanical — only the filename changes). The template at the end of this section is the full shape. On this first write:
@@ -139,7 +160,8 @@ The file must exist on disk before you invoke `AskUserQuestion` for the first ti
 
 Use `AskUserQuestion` to resolve ambiguities. Rules:
 
-- **Batch questions by theme** — up to 4 questions per AskUserQuestion call
+- **Ask 1–2 questions per AskUserQuestion call** — keep rounds small so each answer informs the next question before more are asked. This is a conversation, not a form.
+- **Follow the user's direction** — after each answer, explicitly consider what it unlocked or changed before drafting the next question. Don't pre-script a fixed interrogation sequence.
 - **Provide concrete options** with descriptions explaining trade-offs
 - **Use previews** for UI mockups or code snippets when comparing approaches
 - **Put your recommended option first** with "(Recommended)" in the label
