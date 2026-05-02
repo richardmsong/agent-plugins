@@ -84,71 +84,45 @@ Context matters — don't skim a keyword match. Read the full spec section and t
 
 | Class | Meaning | ADR needed? | Spec update? |
 |-------|---------|-------------|--------------|
-| A — bug | Spec correct, code wrong | Yes — records the bug and fix rationale | No |
-| B — new feature | No spec/ADR covers it | Yes — route via `/plan-feature` first | Yes, if cross-cutting |
-| C — behavior change / spec gap | Spec describes old behavior OR is silent | Yes | Yes |
-| D — refactor | Behavior unchanged | Yes — records *why* the refactor is worth doing | Usually no |
+| A — bug | Spec correct, code wrong | Yes — via `/plan-feature` dialogue | No |
+| B — new feature | No spec/ADR covers it | Yes — via `/plan-feature` dialogue | Yes, if cross-cutting |
+| C — behavior change / spec gap | Spec describes old behavior OR is silent | Yes — via `/plan-feature` dialogue | Yes |
+| D — refactor | Behavior unchanged | Yes — via `/plan-feature` dialogue | Usually no |
 
 **A — Bug:** The spec describes the desired behavior in enough detail that someone reading only the spec could implement the fix. The code simply diverges. Example: spec says a field is omitted when empty, code returns an internal URL.
 
 **Litmus test for A:** Can you point to a specific sentence in the spec that the fix restores compliance with? If yes -> A. If the fix requires adding behavior, configuration, setup steps, or environmental prerequisites that the spec doesn't mention -> C.
 
-**B — New feature:** Tell the user:
-```
-No ADR or spec covers this. Run /plan-feature <description> to produce an ADR, then re-run /feature-change.
-```
+**B — New feature:** No existing ADR or spec covers this behavior. The ADR will be authored through the `/plan-feature` dialogue in Step 3.
 
-**C — Behavior change or spec gap:** Either the spec describes old behavior you're changing, OR the spec is silent on something that should be specified. Author a new ADR describing the change AND update the impacted spec section(s) in the same commit.
+**C — Behavior change or spec gap:** Either the spec describes old behavior you're changing, OR the spec is silent on something that should be specified. The ADR will be authored through `/plan-feature` and impacted spec sections updated in the same commit.
 
-**D — Refactor:** Behavior unchanged. Still author an ADR — it records the motivation (debt, readability, test coverage, etc.) so the next person sees why the refactor happened. Usually no spec update.
+**D — Refactor:** Behavior unchanged. The ADR records the motivation (debt, readability, test coverage, etc.) via `/plan-feature` dialogue so the next person sees why the refactor happened. Usually no spec update.
 
 **Default to C when in doubt.** An undocumented behavior is cumulative cost; an extra ADR is near-zero cost. If the spec doesn't say what should happen, classify C and fill in the spec.
 
 ---
 
-## Step 3 — Author the ADR
+## Step 3 — Author the ADR via /plan-feature dialogue
 
-Create `docs/adr-NNNN-<slug>.md`. Compute N by extracting the highest existing number and adding 1: `N = $(ls docs/adr-*.md | sed 's|.*/adr-||' | cut -c1-4 | sort -n | tail -1) + 1`, zero-padded to 4 digits. Do NOT use `wc -l` — file count diverges from max number when numbers are reused or files deleted. Use a kebab-case slug.
+**For all classes (A/B/C/D), invoke `/plan-feature` to author the ADR.** Do not author the ADR directly. `/plan-feature` runs the conversational Q&A loop, writes the draft to disk, resolves all ambiguities with the user, runs the design audit, and commits the accepted ADR together with any spec edits.
 
-Minimum content:
-
-```markdown
-# ADR: <Title>
-
-**Status**: accepted
-**Status history**:
-- YYYY-MM-DD: accepted
-
-## Overview
-What this change is and what it enables. One paragraph.
-
-## Motivation
-Why this change is being made. Include the incident, user report, scalability pressure, or other trigger.
-
-## Decisions
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-
-## Impact
-Which specs are updated in this commit. Which components implement the change.
-
-**Exhaustive spec inventory:** For every shared concept this ADR changes (bucket names, subject patterns, KV key formats, JWT scopes, payload schemas, state field names, enum values), grep ALL spec files for references to that concept and list every spec that mentions it — not just the ones you intend to edit. If a spec references the old value, it MUST be listed here as requiring an update. Missing a spec from this list is how cross-component bugs ship.
-
-## Scope
-What's in v1. What's explicitly deferred.
-
-## Integration Test Cases
-
-| Test case | What it verifies | Components exercised |
-|-----------|------------------|----------------------|
-
-(Skip for docs-only or cosmetic changes with a note.)
-
-### Cross-component interface tests
-For every shared interface this ADR changes (KV buckets, NATS subjects, API contracts), include at least one test case that verifies two different components agree on the interface. Example: "SPA reads from `mclaude-sessions-{uslug}` bucket (same bucket the session-agent writes to)".
+Pass context from Step 1–2 when invoking:
+```
+/plan-feature <description> [— class <A/B/C/D>, relevant specs: <list>, prior ADRs: <list>]
 ```
 
-For bug fixes (class A), the ADR is short — an Overview + Motivation + a one-line Impact is often enough. For features and spec changes (B/C), follow the fuller structure in `/plan-feature`. **Every ADR that touches runtime behavior must include at least one integration test case** — this is the smoke test gate that prevents regressions like missing JWT permissions from shipping undetected.
+`/plan-feature` will:
+- Write the initial draft ADR to disk (durable from the first turn)
+- Run the conversational Q&A loop (1–2 questions per round)
+- Finalize the ADR and update impacted specs
+- Run `/design-audit` and `/spec-evaluator` until CLEAN
+- Commit ADR + spec edits together (the lineage edge)
+- Hand back an accepted ADR at `docs/adr-NNNN-<slug>.md`
+
+When `/plan-feature` returns, **skip Steps 4 and 5** — they are already done. Continue at Step 6 (dev-harness loop) using the ADR that `/plan-feature` produced.
+
+**Every ADR that touches runtime behavior must include at least one integration test case** — this is the smoke test gate that prevents regressions like missing JWT permissions from shipping undetected.
 
 ---
 
